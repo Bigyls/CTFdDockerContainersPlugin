@@ -58,6 +58,10 @@ When a user clicks on a container challenge, a button labeled "Start Instance" a
 
 ![Challenge dialog](dialog.png)
 
+## Roadmap
+
+- [ ] Possibility to use 2 docker TCP connection method (like 1 windows and 1 linux).
+
 ## Contributing
 
 You can create issues and PRs by yourself if you experienced a bug, have questions or if you have an idea for a new feature. This repository aims to remain active, up to date and scalable.
