@@ -1,13 +1,9 @@
 CTFd._internal.challenge.data = undefined;
 
-CTFd._internal.challenge.renderer = CTFd.lib.markdown();
-
+CTFd._internal.challenge.renderer = null;
 CTFd._internal.challenge.preRender = function () {};
 
-CTFd._internal.challenge.render = function (markdown) {
-	return CTFd._internal.challenge.renderer.render(markdown);
-};
-
+CTFd._internal.challenge.render = null
 CTFd._internal.challenge.postRender = function () {};
 
 CTFd._internal.challenge.submit = function (preview) {
@@ -51,15 +47,47 @@ function mergeQueryParams(parameters, queryParameters) {
 	return queryParameters;
 }
 
+function container_running(challenge_id) {
+	var path = "/containers/api/running";
+	var requestButton = document.getElementById("container-request-btn");
+	var requestError = document.getElementById("container-request-error");
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", path, true);
+	xhr.setRequestHeader("Content-Type", "application/json");
+	xhr.setRequestHeader("Accept", "application/json");
+	xhr.setRequestHeader("CSRF-Token", init.csrfNonce);
+	xhr.send(JSON.stringify({ chal_id: challenge_id }));
+	xhr.onload = function () {
+		var data = JSON.parse(this.responseText);
+		if (data.error !== undefined) {
+			// Container error
+			requestError.style.display = "";
+			requestError.firstElementChild.innerHTML = data.error;
+			requestButton.removeAttribute("disabled");
+		} else if (data.message !== undefined) {
+			// CTFd error
+			requestError.style.display = "";
+			requestError.firstElementChild.innerHTML = data.message;
+			requestButton.removeAttribute("disabled");
+		} else if (data && data.status === "already_running" && data.container_id == challenge_id) {
+			// Success
+			console.log(challenge_id);
+			container_request(challenge_id);
+		}
+		else{
+			// Pass
+		}
+		console.log(data);
+	};
+}
+
 function container_request(challenge_id) {
 	var path = "/containers/api/request";
 	var requestButton = document.getElementById("container-request-btn");
 	var requestResult = document.getElementById("container-request-result");
 	var connectionInfo = document.getElementById("container-connection-info");
 	var containerExpires = document.getElementById("container-expires");
-	var containerExpiresTime = document.getElementById(
-		"container-expires-time"
-	);
+	var containerExpiresTime = document.getElementById("container-expires-time");
 	var requestError = document.getElementById("container-request-error");
 
 	requestButton.setAttribute("disabled", "disabled");
@@ -87,13 +115,15 @@ function container_request(challenge_id) {
 			requestError.style.display = "none";
 			requestError.firstElementChild.innerHTML = "";
 			requestButton.parentNode.removeChild(requestButton);
-			connectionInfo.innerHTML = data.hostname + ":" + data.port;
+			if (data.hostname.startsWith("http")) {
+				connectionInfo.innerHTML = '<a href="' + data.hostname + ':' + data.port + '" target="_blank">' + data.hostname + ':' + data.port + '</a>';
+			} else {
+				connectionInfo.innerHTML = data.hostname + ' ' + data.port;
+			}
 			containerExpires.innerHTML = Math.ceil(
 				(new Date(data.expires * 1000) - new Date()) / 1000 / 60
 			);
-			containerExpiresTime.innerHTML = new Date(
-				data.expires * 1000
-			).toLocaleTimeString();
+			containerExpiresTime.style.display = "";
 			requestResult.style.display = "";
 		}
 		console.log(data);
@@ -105,9 +135,6 @@ function container_reset(challenge_id) {
 	var resetButton = document.getElementById("container-reset-btn");
 	var requestResult = document.getElementById("container-request-result");
 	var containerExpires = document.getElementById("container-expires");
-	var containerExpiresTime = document.getElementById(
-		"container-expires-time"
-	);
 	var connectionInfo = document.getElementById("container-connection-info");
 	var requestError = document.getElementById("container-request-error");
 
@@ -138,9 +165,6 @@ function container_reset(challenge_id) {
 			containerExpires.innerHTML = Math.ceil(
 				(new Date(data.expires * 1000) - new Date()) / 1000 / 60
 			);
-			containerExpiresTime.innerHTML = new Date(
-				data.expires * 1000
-			).toLocaleTimeString();
 			requestResult.style.display = "";
 			resetButton.removeAttribute("disabled");
 		}
@@ -153,9 +177,6 @@ function container_renew(challenge_id) {
 	var renewButton = document.getElementById("container-renew-btn");
 	var requestResult = document.getElementById("container-request-result");
 	var containerExpires = document.getElementById("container-expires");
-	var containerExpiresTime = document.getElementById(
-		"container-expires-time"
-	);
 	var requestError = document.getElementById("container-request-error");
 
 	renewButton.setAttribute("disabled", "disabled");
@@ -185,9 +206,6 @@ function container_renew(challenge_id) {
 			containerExpires.innerHTML = Math.ceil(
 				(new Date(data.expires * 1000) - new Date()) / 1000 / 60
 			);
-			containerExpiresTime.innerHTML = new Date(
-				data.expires * 1000
-			).toLocaleTimeString();
 			renewButton.removeAttribute("disabled");
 		}
 		console.log(data);
@@ -200,7 +218,7 @@ function container_stop(challenge_id) {
 	var requestResult = document.getElementById("container-request-result");
 	var connectionInfo = document.getElementById("container-connection-info");
 	var requestError = document.getElementById("container-request-error");
-
+	var containerExpiresTime = document.getElementById("container-expires-time");
 	stopButton.setAttribute("disabled", "disabled");
 
 	var xhr = new XMLHttpRequest();
@@ -224,8 +242,8 @@ function container_stop(challenge_id) {
 		} else {
 			// Success
 			requestError.style.display = "none";
-			requestResult.innerHTML =
-				"Container stopped. Reopen this challenge to start another.";
+			requestResult.innerHTML = "Container stopped. <br>Reopen this challenge to start another.";
+			containerExpiresTime.style.display = "none"
 		}
 		console.log(data);
 	};

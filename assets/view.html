@@ -1,25 +1,34 @@
 {% extends "challenge.html" %}
 
 {% block connection_info %}
-<div>
-</div>
-<button type="submit" class="btn btn-success" id="container-request-btn"
-	onclick="container_request({{ challenge.id }})">Get Connection
-	Info</button>
-<div id="container-request-result" style="display: none;">
-	<p><code id="container-connection-info"></code></p>
-	<p>Expires in <span id="container-expires"></span> minutes (<span id="container-expires-time"></span>)</p>
-	<p>
-		<button type="submit" class="btn btn-info" id="container-reset-btn"
-			onclick="container_reset({{ challenge.id }})">Reset</button>
-		<button type="submit" class="btn btn-info" id="container-stop-btn"
-			onclick="container_stop({{ challenge.id }})">Stop</button>
-		<button type="submit" class="btn btn-info" id="container-renew-btn"
-			onclick="container_renew({{ challenge.id }})">Add Time</button>
-	</p>
-</div>
-<div id="container-request-error" class="alert alert-danger alert-dismissable text-center" role="alert"
-	style="display: none;">
-	<strong id="result-message">Error</strong>
+<div class="card text-center">
+	<div class="card-body">
+		<h5 class="card-title">Instance Info</h5>
+		<button class="btn btn-success" id="container-request-btn" 
+			onclick="container_request({{ challenge.id }})">
+			Start an Instance
+		</button>
+		
+		<img src="" alt="" onerror="container_running({{challenge.id}})">
+		
+		<div id="container-request-result" style="display: none;">
+			<p><code id="container-connection-info"></code></p>
+			<button type="button" class="btn btn-danger card-link" id="container-stop-btn"
+				onclick="container_stop({{ challenge.id }})">
+				Destroy this instance
+			</button>
+			<button type="button" class="btn btn-success card-link" id="container-renew-btn"
+				onclick="container_renew({{ challenge.id }})">
+				Add Time
+			</button>
+		</div>
+		<div id="container-request-error" class="alert alert-danger alert-dismissable text-center" role="alert"
+			style="display: none;">
+			<strong id="result-message">Error</strong>
+		</div>
+	</div>
+	<div class="card-footer text-muted" id="container-expires-time" style="display: none;">
+		Expires in <span id="container-expires"></span> minutes
+	</div>
 </div>
 {% endblock %}

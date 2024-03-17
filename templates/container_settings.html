@@ -24,7 +24,7 @@
 						Base URL (see instructions)
 					</label>
 					<input class="form-control" type="text" name="docker_base_url" id="docker_base_url"
-						placeholder="E.g. unix://var/run/docker.sock or ssh://root@example.com"
+						placeholder="E.g. unix://var/run/docker.sock or tcp://example.com:port"
 						value='{{ settings.docker_base_url|default("") }}' />
 				</div>
 				<div class="form-group">
@@ -68,10 +68,12 @@
 	<h3>Instructions</h3>
 	<p>
 		The Base URL should be the local socket address of the Docker daemon, i.e.
-		<code>unix://var/run/docker.sock</code>, or it can be a remote SSH address, e.g.
-		<code>ssh://root@example.com</code>. In either case, sudo will not be executed. For a local socket, the user
-		CTFd is running as should have permissions for Docker; for SSH connections, the SSH user in the Base URL should
-		be root or have Docker permissions.
+		<code>unix://var/run/docker.sock</code>, or it can be a remote TCP address, e.g.
+		<code>tcp://example.com:port</code> (<a
+			href="https://docs.docker.com/config/daemon/remote-access/">https://docs.docker.com/config/daemon/remote-access/</a>).
+		In either case, sudo will not
+		be executed. For a local socket, the user
+		CTFd is running as should have permissions for Docker; for TCP connections...
 	</p>
 </div>
 {% endblock content %}
