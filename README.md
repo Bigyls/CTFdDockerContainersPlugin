@@ -61,6 +61,7 @@ When a user clicks on a container challenge, a button labeled "Start Instance" a
 ## Roadmap
 
 - [ ] Possibility to use 2 docker TCP connection method (like 1 windows and 1 linux).
+- [ ] Make it work with Team mode.
 
 ## Contributing
 
