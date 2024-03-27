@@ -233,7 +233,8 @@ def load(app: Flask):
         running_container_for_user = running_containers_for_user.first()
 
         if running_container_for_user:
-            return {"error": "Stop other instance running"}, 400
+            challenge_of_running_container = ContainerChallenge.challenge_model.query.filter_by(id=running_container_for_user.challenge_id).first()
+            return {"error": f"Stop other instance running ({challenge_of_running_container.name})"}, 400
 
         # TODO: Should insert before creating container, then update. That would avoid a TOCTOU issue
 
