@@ -1,6 +1,7 @@
 # CTFd Docker Containers Plugin
 
 ![CTFd version](https://shields.io/badge/WorkOn-CTFd>=3.6.0-green?&style=for-the-badge)
+![CTFd version](https://shields.io/badge/WorkWith-User_and_Team_mode-blue?&style=for-the-badge)
 
 This CTFd plugin allows you to run ephemeral Docker containers for specific challenges. Users can request a container to use as needed, and its lifecycle will be managed by the plugin.
 
@@ -12,7 +13,11 @@ Go to your CTFd/plugins folder and execute following commands:
 
 ```shell
 git clone https://github.com/Bigyls/CTFdDockerContainersPlugin.git containers
+cd containers
+pip install -r  requirements.txt
 ```
+
+Restart your ctfd.
 
 ### Configuration
 
@@ -61,8 +66,8 @@ When a user clicks on a container challenge, a button labeled "Start Instance" a
 ## Roadmap
 
 - [ ] Possibility to use 2 docker TCP connection method (like 1 windows and 1 linux).
-- [ ] Make it work with Team mode.
-- [ ] Tests with 3.7 CTFd 
+- [x] Make it work with Team mode.
+- [x] Tests with 3.7 CTFd 
 
 ## Contributing
 
