@@ -18,7 +18,7 @@ git clone https://github.com/Bigyls/CTFdDockerContainersPlugin.git containers
 
 To configure the plugin, go to the admin page, click the dropdown in the navbar for plugins, and go to the Containers page (https://example.com/containers/settings). 
 
-Then you can click the settings button to configure the connection. You will need to specify some values, including the connection string to use. This can either be the local Unix socket, or an TCP connection. If using Docker Compose CTFd installation, you can map docker socket into CTFd container by modifying the docker-compose.yml file:
+Then you can click the settings button to configure the connection. You will need to specify some values, including the connection string to use. This can either be the local Unix socket, or an TCP connection. If using Docker Compose CTFd installation, you can map docker socket into CTFd container by modifying the docker-compose.yml file ([Be careful to best pratices](https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html#rule-1-do-not-expose-the-docker-daemon-socket-even-to-the-containers)):
 
 ```yml
  services:
