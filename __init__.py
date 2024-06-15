@@ -304,7 +304,7 @@ def load(app: Flask):
 
             # Check for any existing containers for the user
             running_containers = ContainerInfoModel.query.filter_by(
-                challenge_id=challenge.id, user_id=user.id)
+                challenge_id=challenge.id, user_id=user.team_id if user.team_id != None else user.id)
             running_container = running_containers.first()
 
             if running_container:
@@ -335,7 +335,7 @@ def load(app: Flask):
             return {"error": "User not found"}, 400
 
         try:
-            return create_container(request.json.get("chal_id"), user.id)
+            return create_container(request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
         except ContainerException as err:
             return {"error": str(err)}, 500
 
@@ -358,7 +358,7 @@ def load(app: Flask):
             return {"error": "User not found"}, 400
 
         try:
-            return renew_container(request.json.get("chal_id"), user.id)
+            return renew_container(request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
         except ContainerException as err:
             return {"error": str(err)}, 500
 
@@ -381,12 +381,12 @@ def load(app: Flask):
             return {"error": "User not found"}, 400
 
         running_container: ContainerInfoModel = ContainerInfoModel.query.filter_by(
-            challenge_id=request.json.get("chal_id"), user_id=user.id).first()
+            challenge_id=request.json.get("chal_id"), user_id=user.team_id if user.team_id != None else user.id).first()
 
         if running_container:
             kill_container(running_container.container_id)
 
-        return create_container(request.json.get("chal_id"), user.id)
+        return create_container(request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
 
     @containers_bp.route('/api/stop', methods=['POST'])
     @authed_only
@@ -407,7 +407,7 @@ def load(app: Flask):
             return {"error": "User not found"}, 400
 
         running_container: ContainerInfoModel = ContainerInfoModel.query.filter_by(
-            challenge_id=request.json.get("chal_id"), user_id=user.id).first()
+            challenge_id=request.json.get("chal_id"), user_id=user.team_id if user.team_id != None else user.id).first()
 
         if running_container:
             return kill_container(running_container.container_id)
