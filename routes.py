@@ -2,14 +2,12 @@ import time
 import json
 import datetime
 
-from flask import Blueprint, request, Flask, render_template, url_for, redirect, flash
+from flask import Blueprint, request, Flask, render_template, url_for, redirect, flash, current_app
 
-from CTFd.models import db, Solves
-from CTFd.plugins import register_plugin_assets_directory
-from CTFd.plugins.challenges import CHALLENGE_CLASSES
+from CTFd.models import db
 from CTFd.utils.decorators import authed_only, admins_only, during_ctf_time_only, ratelimit, require_verified_emails
 from CTFd.utils.user import get_current_user
-from CTFd.utils.modes import get_model
+from CTFd.utils.logging import log
 
 from .models import ContainerInfoModel, ContainerSettingsModel
 from .container_manager import ContainerManager, ContainerException
@@ -421,7 +419,7 @@ def route_update_settings():
     if container_manager.settings.get("docker_base_url") is not None:
         try:
             container_manager.initialize_connection(
-                container_manager.settings, app)
+                container_manager.settings, current_app)
         except ContainerException as err:
             flash(str(err), "error")
             return redirect(url_for(".route_containers_settings"))
