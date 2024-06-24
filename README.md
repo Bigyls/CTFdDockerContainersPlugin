@@ -14,7 +14,7 @@ Go to your CTFd/plugins folder and execute following commands:
 ```shell
 git clone https://github.com/Bigyls/CTFdDockerContainersPlugin.git containers
 cd containers
-pip install -r  requirements.txt
+pip install -r requirements.txt
 ```
 
 Restart your ctfd.
@@ -66,8 +66,10 @@ When a user clicks on a container challenge, a button labeled "Start Instance" a
 ## Roadmap
 
 - [ ] Possibility to use 2 docker TCP connection method (like 1 windows and 1 linux).
+- [ ] Add logging.
+- [x] Only one docker per team.
 - [x] Make it work with Team mode.
-- [x] Tests with 3.7 CTFd 
+- [x] Tests with 3.7 CTFd.
 
 ## Contributing
 
