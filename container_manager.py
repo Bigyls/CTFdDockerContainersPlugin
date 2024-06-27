@@ -12,7 +12,6 @@ import requests
 from CTFd.models import db
 from .models import ContainerInfoModel
 
-
 class ContainerException(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
@@ -26,7 +25,6 @@ class ContainerException(Exception):
             return self.message
         else:
             return "Unknown Container Exception"
-
 
 class ContainerManager:
     def __init__(self, settings, app):

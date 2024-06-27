@@ -54,6 +54,9 @@ def route_running_container():
 
         # Make sure the challenge exists and is a container challenge
         if challenge is None:
+            log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Challenge not found during checking if container is running",
+                            user_id=user.id,
+                            challenge_id=challenge)
             return {"error": "Challenge not found"}, 400
 
         # Check for any existing containers for the user
@@ -68,6 +71,10 @@ def route_running_container():
             return {"status": "stopped", "container_id": request.json.get("chal_id")}, 200
 
     except Exception as err:
+        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error checking if container is running ({error})",
+                        user_id=user.id,
+                        challenge_id=request.json.get("chal_id"),
+                        error=str(err))
         return {"error": str(err)}, 500
 
 @containers_bp.route('/api/request', methods=['POST'])
@@ -90,8 +97,15 @@ def route_request_container():
         return {"error": "User not found"}, 400
 
     try:
+        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Creating container",
+                        user_id=user.id,
+                        challenge_id=request.json.get("chal_id"))
         return create_container(request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
     except ContainerException as err:
+        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error creating container ({error})",
+                        user_id=user.id,
+                        challenge_id=request.json.get("chal_id"),
+                        error=str(err))
         return {"error": str(err)}, 500
 
 @containers_bp.route('/api/renew', methods=['POST'])
@@ -114,8 +128,15 @@ def route_renew_container():
         return {"error": "User not found"}, 400
 
     try:
+        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Renewing container",
+                        user_id=user.id,
+                        challenge_id=request.json.get("chal_id"))
         return renew_container(request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
     except ContainerException as err:
+        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error renewing container ({error})",
+                        user_id=user.id,
+                        challenge_id=request.json.get("chal_id"),
+                        error=str(err))
         return {"error": str(err)}, 500
 
 @containers_bp.route('/api/reset', methods=['POST'])
@@ -141,8 +162,14 @@ def route_restart_container():
         challenge_id=request.json.get("chal_id"), user_id=user.team_id if user.team_id != None else user.id).first()
 
     if running_container:
+        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Reseting container",
+                        user_id=user.id,
+                        challenge_id=request.json.get("chal_id"))
         kill_container(running_container.container_id)
 
+    log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Recreating container",
+                    user_id=user.id,
+                    challenge_id=request.json.get("chal_id"))
     return create_container(request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
 
 @containers_bp.route('/api/stop', methods=['POST'])
@@ -167,8 +194,10 @@ def route_stop_container():
         challenge_id=request.json.get("chal_id"), user_id=user.team_id if user.team_id != None else user.id).first()
 
     if running_container:
+        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Stoping container",
+                        user_id=user.id,
+                        challenge_id=request.json.get("chal_id"))
         return kill_container(running_container.container_id)
-
     return {"error": "No container found"}, 400
 
 @containers_bp.route('/api/kill', methods=['POST'])
@@ -180,6 +209,8 @@ def route_kill_container():
     if request.json.get("container_id", None) is None:
         return {"error": "No container_id specified"}, 400
 
+    log("containers", format="[{date}|IP:{ip}] Admin killing container",
+                    challenge_id=request.json.get("chal_id"))
     return kill_container(request.json.get("container_id"))
 
 @containers_bp.route('/api/purge', methods=['POST'])
@@ -191,6 +222,7 @@ def route_purge_containers():
             kill_container(container.container_id)
         except ContainerException:
             pass
+    log("containers", format="[{date}|IP:{ip}] Admin purged all containers")
     return {"success": "Purged all containers"}, 200
 
 @containers_bp.route('/api/images', methods=['GET'])
@@ -201,6 +233,7 @@ def route_get_images():
     except ContainerException as err:
         return {"error": str(err)}
 
+    log("containers", format="[{date}|IP:{ip}] Admin retrieved images : '{images}'", images=images)
     return {"images": images}
 
 @containers_bp.route('/api/settings/update', methods=['POST'])
@@ -242,9 +275,11 @@ def route_update_settings():
         docker_base_url = ContainerSettingsModel(
             key="docker_base_url", value=request.form.get("docker_base_url"))
         db.session.add(docker_base_url)
+        log("containers", format="[{date}|IP:{ip}] Admin created 'docker_base_url' setting DB row")
     else:
         # Update
         docker_base_url.value = request.form.get("docker_base_url")
+        log("containers", format="[{date}|IP:{ip}] Admin updated 'docker_base_url' setting DB row")
 
     # Create or update
     if docker_hostname is None:
@@ -252,9 +287,11 @@ def route_update_settings():
         docker_hostname = ContainerSettingsModel(
             key="docker_hostname", value=request.form.get("docker_hostname"))
         db.session.add(docker_hostname)
+        log("containers", format="[{date}|IP:{ip}] Admin created 'docker_hostname' setting DB row")
     else:
         # Update
         docker_hostname.value = request.form.get("docker_hostname")
+        log("containers", format="[{date}|IP:{ip}] Admin updated 'docker_hostname' setting DB row")
 
     # Create or update
     if container_expiration is None:
@@ -262,10 +299,12 @@ def route_update_settings():
         container_expiration = ContainerSettingsModel(
             key="container_expiration", value=request.form.get("container_expiration"))
         db.session.add(container_expiration)
+        log("containers", format="[{date}|IP:{ip}] Admin created 'container_expiration' setting DB row")
     else:
         # Update
         container_expiration.value = request.form.get(
             "container_expiration")
+        log("containers", format="[{date}|IP:{ip}] Admin updated 'container_expiration' setting DB row")
 
     # Create or update
     if container_maxmemory is None:
@@ -273,9 +312,11 @@ def route_update_settings():
         container_maxmemory = ContainerSettingsModel(
             key="container_maxmemory", value=request.form.get("container_maxmemory"))
         db.session.add(container_maxmemory)
+        log("containers", format="[{date}|IP:{ip}] Admin created 'container_maxmemory' setting DB row")
     else:
         # Update
         container_maxmemory.value = request.form.get("container_maxmemory")
+        log("containers", format="[{date}|IP:{ip}] Admin updated 'container_maxmemory' setting DB row")
 
     # Create or update
     if container_maxcpu is None:
@@ -283,9 +324,11 @@ def route_update_settings():
         container_maxcpu = ContainerSettingsModel(
             key="container_maxcpu", value=request.form.get("container_maxcpu"))
         db.session.add(container_maxcpu)
+        log("containers", format="[{date}|IP:{ip}] Admin created 'container_maxcpu' setting DB row")
     else:
         # Update
         container_maxcpu.value = request.form.get("container_maxcpu")
+        log("containers", format="[{date}|IP:{ip}] Admin updated 'container_maxcpu' setting DB row")
 
     db.session.commit()
 
@@ -296,7 +339,9 @@ def route_update_settings():
         try:
             container_manager.initialize_connection(
                 container_manager.settings, current_app)
+            log("containers", format="[{date}|IP:{ip}] Admin successfully initialized connection to Docker daemon")
         except ContainerException as err:
+            log("containers", format="[{date}|IP:{ip}] Admin error initializing connection to Docker daemon ({error})", error=str(err))
             flash(str(err), "error")
             return redirect(url_for(".route_containers_settings"))
 
@@ -321,6 +366,7 @@ def route_containers_dashboard():
         except ContainerException:
             running_containers[i].is_running = False
 
+    log("containers", format="[{date}|IP:{ip}] Admin Container dashboard called")
     return render_template('container_dashboard.html', containers=running_containers, connected=connected)
 
 @containers_bp.route('/settings', methods=['GET'])
@@ -328,4 +374,6 @@ def route_containers_dashboard():
 def route_containers_settings():
     running_containers = ContainerInfoModel.query.order_by(
         ContainerInfoModel.timestamp.desc()).all()
+
+    log("containers", format="[{date}|IP:{ip}] Admin Container settings called")
     return render_template('container_settings.html', settings=container_manager.settings)
