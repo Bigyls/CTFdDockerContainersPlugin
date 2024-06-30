@@ -16,15 +16,12 @@ def settings_to_dict(settings):
         setting.key: setting.value for setting in settings
     }
 
-container_settings = settings_to_dict(ContainerSettingsModel.query.all())
-container_manager = ContainerManager(container_settings, current_app)
-
 def format_time_filter(unix_seconds):
     # return time.ctime(unix_seconds)
     return datetime.datetime.fromtimestamp(unix_seconds, tz=datetime.datetime.now(
         datetime.timezone.utc).astimezone().tzinfo).isoformat()
 
-def kill_container(container_id):
+def kill_container(container_manager, container_id):
     container: ContainerInfoModel = ContainerInfoModel.query.filter_by(
         container_id=container_id).first()
 
@@ -42,7 +39,7 @@ def kill_container(container_id):
                     container_id=container_id)
     return {"success": "Container killed"}
 
-def renew_container(chal_id, user_id):
+def renew_container(container_manager, chal_id, user_id):
     # Get the requested challenge
     challenge = ContainerChallenge.challenge_model.query.filter_by(
         id=chal_id).first()
@@ -83,7 +80,7 @@ def renew_container(chal_id, user_id):
                     container_id=running_container.container_id)
     return {"success": "Container renewed", "expires": running_container.expires}
 
-def create_container(chal_id, user_id):
+def create_container(container_manager, chal_id, user_id):
     # Get the requested challenge
     challenge = ContainerChallenge.challenge_model.query.filter_by(
         id=chal_id).first()

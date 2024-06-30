@@ -100,7 +100,7 @@ def route_request_container():
         log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Creating container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
-        return create_container(request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
+        return create_container(container_manager, request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
     except ContainerException as err:
         log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error creating container ({error})",
                         user_id=user.id,
@@ -131,7 +131,7 @@ def route_renew_container():
         log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Renewing container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
-        return renew_container(request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
+        return renew_container(container_manager, request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
     except ContainerException as err:
         log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error renewing container ({error})",
                         user_id=user.id,
@@ -165,12 +165,12 @@ def route_restart_container():
         log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Reseting container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
-        kill_container(running_container.container_id)
+        kill_container(container_manager, running_container.container_id)
 
     log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Recreating container",
                     user_id=user.id,
                     challenge_id=request.json.get("chal_id"))
-    return create_container(request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
+    return create_container(container_manager, request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
 
 @containers_bp.route('/api/stop', methods=['POST'])
 @authed_only
@@ -197,12 +197,12 @@ def route_stop_container():
         log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Stoping container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
-        return kill_container(running_container.container_id)
+        return kill_container(container_manager, running_container.container_id)
     return {"error": "No container found"}, 400
 
 @containers_bp.route('/api/kill', methods=['POST'])
 @admins_only
-def route_kill_container():
+def route_kill_container(container_manager, ):
     if request.json is None:
         return {"error": "Invalid request"}, 400
 
@@ -211,7 +211,7 @@ def route_kill_container():
 
     log("containers", format="[{date}|IP:{ip}] Admin killing container",
                     challenge_id=request.json.get("chal_id"))
-    return kill_container(request.json.get("container_id"))
+    return kill_container(container_manager, request.json.get("container_id"))
 
 @containers_bp.route('/api/purge', methods=['POST'])
 @admins_only
@@ -219,7 +219,7 @@ def route_purge_containers():
     containers: "list[ContainerInfoModel]" = ContainerInfoModel.query.all()
     for container in containers:
         try:
-            kill_container(container.container_id)
+            kill_container(container_manager, container.container_id)
         except ContainerException:
             pass
     log("containers", format="[{date}|IP:{ip}] Admin purged all containers")
