@@ -202,7 +202,7 @@ def route_stop_container():
 
 @containers_bp.route('/api/kill', methods=['POST'])
 @admins_only
-def route_kill_container(container_manager, ):
+def route_kill_container():
     if request.json is None:
         return {"error": "Invalid request"}, 400
 
