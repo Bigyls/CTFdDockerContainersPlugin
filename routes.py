@@ -33,8 +33,8 @@ def register_app(app: Flask):
 @authed_only
 @during_ctf_time_only
 @require_verified_emails
-# Rate limit to 100 requests per minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
-# @ratelimit(method="POST", limit=100, interval=60, key_prefix='rl_running_container_post')
+# Rate limit to 100 requests per 5 minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
+@ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_running_container_post')
 def route_running_container():
     user = get_current_user()
 
@@ -81,8 +81,8 @@ def route_running_container():
 @authed_only
 @during_ctf_time_only
 @require_verified_emails
-# Rate limit to 100 requests per minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
-# @ratelimit(method="POST", limit=100, interval=60, key_prefix='rl_request_container_post')
+# Rate limit to 100 requests per 5 minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
+@ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_request_container_post')
 def route_request_container():
     user = get_current_user()
 
@@ -112,8 +112,8 @@ def route_request_container():
 @authed_only
 @during_ctf_time_only
 @require_verified_emails
-# Rate limit to 100 requests per minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
-# @ratelimit(method="POST", limit=100, interval=60, key_prefix='rl_renew_container_post')
+# Rate limit to 100 requests per 5 minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
+@ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_renew_container_post')
 def route_renew_container():
     user = get_current_user()
 
@@ -143,8 +143,8 @@ def route_renew_container():
 @authed_only
 @during_ctf_time_only
 @require_verified_emails
-# Rate limit to 100 requests per minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
-# @ratelimit(method="POST", limit=100, interval=60, key_prefix='rl_restart_container_post')
+# Rate limit to 100 requests per 5 minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
+@ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_restart_container_post')
 def route_restart_container():
     user = get_current_user()
 
@@ -176,8 +176,8 @@ def route_restart_container():
 @authed_only
 @during_ctf_time_only
 @require_verified_emails
-# Rate limit to 100 requests per minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
-# @ratelimit(method="POST", limit=100, interval=60, key_prefix='rl_stop_container_post')
+# Rate limit to 100 requests per 5 minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
+@ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_stop_container_post')
 def route_stop_container():
     user = get_current_user()
     # Validate the request
