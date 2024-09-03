@@ -12,7 +12,7 @@ This CTFd plugin allows you to run ephemeral Docker containers for specific chal
 Go to your CTFd/plugins folder and execute following commands:
 
 ```shell
-git clone https://github.com/Bigyls/CTFdDockerContainersPlugin.git containers
+git clone https://github.com/EternalBlueCTE2k24/CTFdDockerContainersPlugin.git containers
 cd containers
 pip install -r requirements.txt
 ```
