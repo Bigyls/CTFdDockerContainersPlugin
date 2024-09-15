@@ -70,7 +70,15 @@
 				<td class="container_item" id="{{ c.container_id }}">{{ c.container_id[:12] }}</td>
 				<td>{{ c.challenge.image }}</td>
 				<td>{{ c.challenge.name }} [{{ c.challenge_id }}]</td>
-				<td>ID:{{ c.user_id }} (gie {{ c.user_id - 1}})</td>
+				<td>
+					{% if c.team_id is not none %}
+					Team ID: {{ c.team_id }}
+					{% elif c.user_id is not none %}
+					User ID: {{ c.user_id }} (GIE {{ c.user_id - 1 }})
+					{% else %}
+					N/A
+					{% endif %}
+				</td>
 				<td>{{ c.port }}</td>
 				<td>{{ c.timestamp|format_time }}</td>
 				<td>{{ c.expires|format_time }}</td>

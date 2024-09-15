@@ -17,7 +17,6 @@ def settings_to_dict(settings):
     }
 
 def format_time_filter(unix_seconds):
-    # return time.ctime(unix_seconds)
     return datetime.datetime.fromtimestamp(unix_seconds, tz=datetime.datetime.now(
         datetime.timezone.utc).astimezone().tzinfo).isoformat()
 
@@ -39,27 +38,27 @@ def kill_container(container_manager, container_id):
                     container_id=container_id)
     return {"success": "Container killed"}
 
-def renew_container(container_manager, chal_id, user_id):
+def renew_container(container_manager, chal_id, user_or_team_id):
     # Get the requested challenge
     challenge = ContainerChallenge.challenge_model.query.filter_by(
         id=chal_id).first()
 
     # Make sure the challenge exists and is a container challenge
     if challenge is None:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Renew container failled (Challenge not found)",
-                        user_id=user_id,
+        log("containers", format="[{date}|IP:{ip}|USER/TEAM:{user_or_team_id}|CHALL:{challenge_id}] Renew container failed (Challenge not found)",
+                        user_or_team_id=user_or_team_id,
                         challenge_id=chal_id)
         return {"error": "Challenge not found"}, 400
 
-    running_containers = ContainerInfoModel.query.filter_by(
-        challenge_id=challenge.id, user_id=user_id)
-    running_container = running_containers.first()
+    running_container = ContainerInfoModel.query.filter(
+        (ContainerInfoModel.challenge_id == challenge.id) &
+        ((ContainerInfoModel.user_id == user_or_team_id) | (ContainerInfoModel.team_id == user_or_team_id))
+    ).first()
 
     if running_container is None:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Renew container failled (Container '{container_id}' not found)",
-            user_id=user_id,
-            challenge_id=chal_id,
-            container_id=running_container.container_id)
+        log("containers", format="[{date}|IP:{ip}|USER/TEAM:{user_or_team_id}|CHALL:{challenge_id}] Renew container failed (Container not found)",
+            user_or_team_id=user_or_team_id,
+            challenge_id=chal_id)
         return {"error": "Container not found, try resetting the container."}
 
     try:
@@ -67,37 +66,40 @@ def renew_container(container_manager, chal_id, user_id):
             time.time() + container_manager.expiration_seconds)
         db.session.commit()
     except ContainerException as err:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Renew container '{container_id}' failled (Database error : '{error}')",
-                        user_id=user_id,
+        log("containers", format="[{date}|IP:{ip}|USER/TEAM:{user_or_team_id}|CHALL:{challenge_id}] Renew container '{container_id}' failed (Database error : '{error}')",
+                        user_or_team_id=user_or_team_id,
                         challenge_id=chal_id,
                         container_id=running_container.container_id,
                         error=str(err))
         return {"error": "Database error occurred, please try again."}
 
-    log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Container '{container_id}' renewed",
-                    user_id=user_id,
+    log("containers", format="[{date}|IP:{ip}|USER/TEAM:{user_or_team_id}|CHALL:{challenge_id}] Container '{container_id}' renewed",
+                    user_or_team_id=user_or_team_id,
                     challenge_id=chal_id,
                     container_id=running_container.container_id)
     return {"success": "Container renewed", "expires": running_container.expires}
 
-def create_container(container_manager, chal_id, user_id):
+def create_container(container_manager, chal_id, user_or_team_id, is_team):
     # Get the requested challenge
     challenge = ContainerChallenge.challenge_model.query.filter_by(
         id=chal_id).first()
 
     # Make sure the challenge exists and is a container challenge
     if challenge is None:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Container creation failled (Challenge not found)",
-                        user_id=user_id,
+        log("containers", format="[{date}|IP:{ip}|USER/TEAM:{user_or_team_id}|CHALL:{challenge_id}] Container creation failed (Challenge not found)",
+                        user_or_team_id=user_or_team_id,
                         challenge_id=chal_id)
         return {"error": "Challenge not found"}, 400
 
-    # Check for any existing containers for the user
-    running_containers = ContainerInfoModel.query.filter_by(
-        challenge_id=challenge.id, user_id=user_id)
-    running_container = running_containers.first()
+    # Check for any existing containers for the user or team
+    if is_team:
+        running_container = ContainerInfoModel.query.filter_by(
+            challenge_id=challenge.id, team_id=user_or_team_id).first()
+    else:
+        running_container = ContainerInfoModel.query.filter_by(
+            challenge_id=challenge.id, user_id=user_or_team_id).first()
 
-    # If a container is already running for the user, return it
+    # If a container is already running for the user or team, return it
     if running_container:
         # Check if Docker says the container is still running before returning it
         try:
@@ -112,35 +114,23 @@ def create_container(container_manager, chal_id, user_id):
             else:
                 # Container is not running, it must have died or been killed,
                 # remove it from the database and create a new one
-                running_containers.delete()
+                db.session.delete(running_container)
                 db.session.commit()
         except ContainerException as err:
-            log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Container creation failled ({error})",
-                            user_id=user_id,
+            log("containers", format="[{date}|IP:{ip}|USER/TEAM:{user_or_team_id}|CHALL:{challenge_id}] Container creation failed ({error})",
+                            user_or_team_id=user_or_team_id,
                             challenge_id=chal_id,
                             container_id=running_container.container_id,
                             error=str(err))
             return {"error": str(err)}, 500
-
-    running_containers_for_user = ContainerInfoModel.query.filter_by(user_id=user_id)
-    running_container_for_user = running_containers_for_user.first()
-
-    if running_container_for_user:
-        challenge_of_running_container = ContainerChallenge.challenge_model.query.filter_by(id=running_container_for_user.challenge_id).first()
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Container creation failled (Other instance already running)",
-                        user_id=user_id,
-                        challenge_id=chal_id)
-        return {"error": f"Stop other instance running ({challenge_of_running_container.name})"}, 400
-
-    # TODO: Should insert before creating container, then update. That would avoid a TOCTOU issue
 
     # Run a new Docker container
     try:
         created_container = container_manager.create_container(
             challenge.image, challenge.port, challenge.command, challenge.volumes)
     except ContainerException as err:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Container creation failled ({error})",
-                        user_id=user_id,
+        log("containers", format="[{date}|IP:{ip}|USER/TEAM:{user_or_team_id}|CHALL:{challenge_id}] Container creation failed ({error})",
+                        user_or_team_id=user_or_team_id,
                         challenge_id=chal_id,
                         error=str(err))
         return {"error": str(err)}
@@ -161,7 +151,8 @@ def create_container(container_manager, chal_id, user_id):
     new_container = ContainerInfoModel(
         container_id=created_container.id,
         challenge_id=challenge.id,
-        user_id=user_id,
+        user_id=None if is_team else user_or_team_id,
+        team_id=user_or_team_id if is_team else None,
         port=port,
         timestamp=int(time.time()),
         expires=expires
@@ -169,8 +160,8 @@ def create_container(container_manager, chal_id, user_id):
     db.session.add(new_container)
     db.session.commit()
 
-    log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Container '{container_id}' created",
-                    user_id=user_id,
+    log("containers", format="[{date}|IP:{ip}|USER/TEAM:{user_or_team_id}|CHALL:{challenge_id}] Container '{container_id}' created",
+                    user_or_team_id=user_or_team_id,
                     challenge_id=chal_id,
                     container_id=created_container.id)
     return json.dumps({

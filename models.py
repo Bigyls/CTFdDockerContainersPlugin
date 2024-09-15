@@ -34,13 +34,16 @@ class ContainerInfoModel(db.Model):
     user_id = db.Column(
         db.Integer, db.ForeignKey("users.id", ondelete="CASCADE")
     )
+    team_id = db.Column(
+        db.Integer, db.ForeignKey("teams.id", ondelete="CASCADE")
+    )
     port = db.Column(db.Integer)
     timestamp = db.Column(db.Integer)
     expires = db.Column(db.Integer)
-    user = relationship("Users", foreign_keys=[user_id])
-    challenge = relationship(ContainerChallengeModel,
-                             foreign_keys=[challenge_id])
-
+    user = db.relationship("Users", foreign_keys=[user_id])
+    team = db.relationship("Teams", foreign_keys=[team_id])
+    challenge = db.relationship(ContainerChallengeModel,
+                                foreign_keys=[challenge_id])
 
 class ContainerSettingsModel(db.Model):
     __mapper_args__ = {"polymorphic_identity": "container_settings"}

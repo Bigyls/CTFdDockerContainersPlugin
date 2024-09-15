@@ -27,18 +27,16 @@ def register_app(app: Flask):
     container_settings = settings_to_dict(ContainerSettingsModel.query.all())
     global container_manager
     container_manager = ContainerManager(container_settings, app)
-    app.register_blueprint(containers_bp)
+    return containers_bp  # Return the blueprint instead of registering it
 
 @containers_bp.route('/api/running', methods=['POST'])
 @authed_only
 @during_ctf_time_only
 @require_verified_emails
-# Rate limit to 100 requests per 5 minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
 @ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_running_container_post')
 def route_running_container():
     user = get_current_user()
 
-    # Validate the request
     if request.json is None:
         return {"error": "Invalid request"}, 400
 
@@ -52,21 +50,21 @@ def route_running_container():
         challenge = ContainerChallenge.challenge_model.query.filter_by(
         id=request.json.get("chal_id")).first()
 
-        # Make sure the challenge exists and is a container challenge
         if challenge is None:
             log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Challenge not found during checking if container is running",
                             user_id=user.id,
-                            challenge_id=challenge)
+                            challenge_id=request.json.get("chal_id"))
             return {"error": "Challenge not found"}, 400
 
-        # Check for any existing containers for the user
-        running_containers = ContainerInfoModel.query.filter_by(
-            challenge_id=challenge.id, user_id=user.team_id if user.team_id != None else user.id)
-        running_container = running_containers.first()
+        if user.team_id:
+            running_container = ContainerInfoModel.query.filter_by(
+                challenge_id=challenge.id, team_id=user.team_id).first()
+        else:
+            running_container = ContainerInfoModel.query.filter_by(
+                challenge_id=challenge.id, user_id=user.id).first()
 
         if running_container:
             return {"status": "already_running", "container_id": request.json.get("chal_id")}, 200
-
         else:
             return {"status": "stopped", "container_id": request.json.get("chal_id")}, 200
 
@@ -81,12 +79,10 @@ def route_running_container():
 @authed_only
 @during_ctf_time_only
 @require_verified_emails
-# Rate limit to 100 requests per 5 minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
 @ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_request_container_post')
 def route_request_container():
     user = get_current_user()
 
-    # Validate the request
     if request.json is None:
         return {"error": "Invalid request"}, 400
 
@@ -100,7 +96,7 @@ def route_request_container():
         log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Creating container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
-        return create_container(container_manager, request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
+        return create_container(container_manager, request.json.get("chal_id"), user.team_id if user.team_id else user.id, bool(user.team_id))
     except ContainerException as err:
         log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error creating container ({error})",
                         user_id=user.id,
@@ -112,12 +108,10 @@ def route_request_container():
 @authed_only
 @during_ctf_time_only
 @require_verified_emails
-# Rate limit to 100 requests per 5 minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
 @ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_renew_container_post')
 def route_renew_container():
     user = get_current_user()
 
-    # Validate the request
     if request.json is None:
         return {"error": "Invalid request"}, 400
 
@@ -131,7 +125,7 @@ def route_renew_container():
         log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Renewing container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
-        return renew_container(container_manager, request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
+        return renew_container(container_manager, request.json.get("chal_id"), user.team_id if user.team_id else user.id)
     except ContainerException as err:
         log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error renewing container ({error})",
                         user_id=user.id,
@@ -143,12 +137,10 @@ def route_renew_container():
 @authed_only
 @during_ctf_time_only
 @require_verified_emails
-# Rate limit to 100 requests per 5 minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
 @ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_restart_container_post')
 def route_restart_container():
     user = get_current_user()
 
-    # Validate the request
     if request.json is None:
         return {"error": "Invalid request"}, 400
 
@@ -158,11 +150,15 @@ def route_restart_container():
     if user is None:
         return {"error": "User not found"}, 400
 
-    running_container: ContainerInfoModel = ContainerInfoModel.query.filter_by(
-        challenge_id=request.json.get("chal_id"), user_id=user.team_id if user.team_id != None else user.id).first()
+    if user.team_id:
+        running_container = ContainerInfoModel.query.filter_by(
+            challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
+    else:
+        running_container = ContainerInfoModel.query.filter_by(
+            challenge_id=request.json.get("chal_id"), user_id=user.id).first()
 
     if running_container:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Reseting container",
+        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Resetting container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
         kill_container(container_manager, running_container.container_id)
@@ -170,17 +166,15 @@ def route_restart_container():
     log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Recreating container",
                     user_id=user.id,
                     challenge_id=request.json.get("chal_id"))
-    return create_container(container_manager, request.json.get("chal_id"), user.team_id if user.team_id != None else user.id)
+    return create_container(container_manager, request.json.get("chal_id"), user.team_id if user.team_id else user.id, bool(user.team_id))
 
 @containers_bp.route('/api/stop', methods=['POST'])
 @authed_only
 @during_ctf_time_only
 @require_verified_emails
-# Rate limit to 100 requests per 5 minute (be careful with this feature when event is on same network. Based on IP address, it will block all users on the same network.)
 @ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_stop_container_post')
 def route_stop_container():
     user = get_current_user()
-    # Validate the request
     if request.json is None:
         return {"error": "Invalid request"}, 400
 
@@ -190,11 +184,15 @@ def route_stop_container():
     if user is None:
         return {"error": "User not found"}, 400
 
-    running_container: ContainerInfoModel = ContainerInfoModel.query.filter_by(
-        challenge_id=request.json.get("chal_id"), user_id=user.team_id if user.team_id != None else user.id).first()
+    if user.team_id:
+        running_container = ContainerInfoModel.query.filter_by(
+            challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
+    else:
+        running_container = ContainerInfoModel.query.filter_by(
+            challenge_id=request.json.get("chal_id"), user_id=user.id).first()
 
     if running_container:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Stoping container",
+        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Stopping container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
         return kill_container(container_manager, running_container.container_id)
@@ -216,7 +214,7 @@ def route_kill_container():
 @containers_bp.route('/api/purge', methods=['POST'])
 @admins_only
 def route_purge_containers():
-    containers: "list[ContainerInfoModel]" = ContainerInfoModel.query.all()
+    containers = ContainerInfoModel.query.all()
     for container in containers:
         try:
             kill_container(container_manager, container.container_id)
@@ -341,7 +339,9 @@ def route_update_settings():
                 container_manager.settings, current_app)
             log("containers", format="[{date}|IP:{ip}] Admin successfully initialized connection to Docker daemon")
         except ContainerException as err:
-            log("containers", format="[{date}|IP:{ip}] Admin error initializing connection to Docker daemon ({error})", error=str(err))
+            log("containers",
+                format="[{date}|IP:{ip}] Admin error initializing connection to Docker daemon ({error})",
+                error=str(err))
             flash(str(err), "error")
             return redirect(url_for(".route_containers_settings"))
 
