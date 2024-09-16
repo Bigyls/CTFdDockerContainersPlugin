@@ -51,17 +51,13 @@ def route_running_container():
         id=request.json.get("chal_id")).first()
 
         if challenge is None:
-            log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Challenge not found during checking if container is running",
-                            user_id=user.id,
+            log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Challenge not found during checking if container is running",
+                            team_id=user.team_id,
                             challenge_id=request.json.get("chal_id"))
             return {"error": "Challenge not found"}, 400
 
-        if user.team_id:
-            running_container = ContainerInfoModel.query.filter_by(
-                challenge_id=challenge.id, team_id=user.team_id).first()
-        else:
-            running_container = ContainerInfoModel.query.filter_by(
-                challenge_id=challenge.id, user_id=user.id).first()
+        running_container = ContainerInfoModel.query.filter_by(
+            challenge_id=challenge.id, team_id=user.team_id).first()
 
         if running_container:
             return {"status": "already_running", "container_id": request.json.get("chal_id")}, 200
@@ -69,8 +65,8 @@ def route_running_container():
             return {"status": "stopped", "container_id": request.json.get("chal_id")}, 200
 
     except Exception as err:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error checking if container is running ({error})",
-                        user_id=user.id,
+        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Error checking if container is running ({error})",
+                        team_id=user.team_id,
                         challenge_id=request.json.get("chal_id"),
                         error=str(err))
         return {"error": str(err)}, 500
@@ -93,13 +89,13 @@ def route_request_container():
         return {"error": "User not found"}, 400
 
     try:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Creating container",
-                        user_id=user.id,
+        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Creating container",
+                        team_id=user.team_id,
                         challenge_id=request.json.get("chal_id"))
-        return create_container(container_manager, request.json.get("chal_id"), user.team_id if user.team_id else user.id, bool(user.team_id))
+        return create_container(container_manager, request.json.get("chal_id"), user.team_id)
     except ContainerException as err:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error creating container ({error})",
-                        user_id=user.id,
+        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Error creating container ({error})",
+                        team_id=user.team_id,
                         challenge_id=request.json.get("chal_id"),
                         error=str(err))
         return {"error": str(err)}, 500
@@ -122,13 +118,13 @@ def route_renew_container():
         return {"error": "User not found"}, 400
 
     try:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Renewing container",
-                        user_id=user.id,
+        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Renewing container",
+                        team_id=user.team_id,
                         challenge_id=request.json.get("chal_id"))
-        return renew_container(container_manager, request.json.get("chal_id"), user.team_id if user.team_id else user.id)
+        return renew_container(container_manager, request.json.get("chal_id"), user.team_id)
     except ContainerException as err:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error renewing container ({error})",
-                        user_id=user.id,
+        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Error renewing container ({error})",
+                        team_id=user.team_id,
                         challenge_id=request.json.get("chal_id"),
                         error=str(err))
         return {"error": str(err)}, 500
@@ -155,18 +151,18 @@ def route_restart_container():
             challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
     else:
         running_container = ContainerInfoModel.query.filter_by(
-            challenge_id=request.json.get("chal_id"), user_id=user.id).first()
+            challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
 
     if running_container:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Resetting container",
-                        user_id=user.id,
+        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Resetting container",
+                        team_id=user.team_id,
                         challenge_id=request.json.get("chal_id"))
         kill_container(container_manager, running_container.container_id)
 
-    log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Recreating container",
-                    user_id=user.id,
+    log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Recreating container",
+                    team_id=user.team_id,
                     challenge_id=request.json.get("chal_id"))
-    return create_container(container_manager, request.json.get("chal_id"), user.team_id if user.team_id else user.id, bool(user.team_id))
+    return create_container(container_manager, request.json.get("chal_id"), user.team_id)
 
 @containers_bp.route('/api/stop', methods=['POST'])
 @authed_only
@@ -189,11 +185,11 @@ def route_stop_container():
             challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
     else:
         running_container = ContainerInfoModel.query.filter_by(
-            challenge_id=request.json.get("chal_id"), user_id=user.id).first()
+            challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
 
     if running_container:
-        log("containers", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Stopping container",
-                        user_id=user.id,
+        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Stopping container",
+                        team_id=user.team_id,
                         challenge_id=request.json.get("chal_id"))
         return kill_container(container_manager, running_container.container_id)
     return {"error": "No container found"}, 400
