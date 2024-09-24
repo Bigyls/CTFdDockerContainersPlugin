@@ -55,6 +55,32 @@
 					<input class="form-control" type="text" name="container_maxcpu" id="container_maxcpu"
 						placeholder="e.g. 1.5" value='{{ settings.container_maxcpu|default("") }}' />
 				</div>
+				<div class="form-group">
+					<label for="docker_assignment">
+						Docker restrictions
+					</label>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="docker_assignment" id="docker_per_team"
+							value="team" {% if settings.docker_assignment=='team' %}checked{% endif %}>
+						<label class="form-check-label" for="docker_per_team">
+							1 Docker per team
+						</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="docker_assignment" id="docker_per_user"
+							value="user" {% if settings.docker_assignment=='user' %}checked{% endif %}>
+						<label class="form-check-label" for="docker_per_user">
+							1 Docker per user
+						</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="docker_assignment" id="docker_unlimited"
+							value="unlimited" {% if settings.docker_assignment=='unlimited' %}checked{% endif %}>
+						<label class="form-check-label" for="docker_unlimited">
+							Unlimited
+						</label>
+					</div>
+				</div>
 				<div class="col-md-13 text-center">
 					<button type="submit" tabindex="0" class="btn btn-md btn-success btn-outlined">
 						Submit

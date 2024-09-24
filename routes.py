@@ -14,20 +14,22 @@ from .container_manager import ContainerManager, ContainerException
 from .container_challenge import ContainerChallenge
 from .routes_helper import format_time_filter, create_container, renew_container, kill_container
 
-def settings_to_dict(settings):
-    return {
-        setting.key: setting.value for setting in settings
-    }
-
 containers_bp = Blueprint(
     'containers', __name__, template_folder='templates', static_folder='assets', url_prefix='/containers')
-containers_bp.app_template_filter("format_time")(format_time_filter)  # Register the filter
+
+def settings_to_dict(settings):
+    return {setting.key: setting.value for setting in settings}
 
 def register_app(app: Flask):
     container_settings = settings_to_dict(ContainerSettingsModel.query.all())
     global container_manager
     container_manager = ContainerManager(container_settings, app)
-    return containers_bp  # Return the blueprint instead of registering it
+    return containers_bp
+
+def format_time_filter(timestamp):
+    return datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+
+containers_bp.app_template_filter("format_time")(format_time_filter)
 
 @containers_bp.route('/api/running', methods=['POST'])
 @authed_only
@@ -37,27 +39,26 @@ def register_app(app: Flask):
 def route_running_container():
     user = get_current_user()
 
-    if request.json is None:
+    if request.json is None or request.json.get("chal_id") is None or user is None:
         return {"error": "Invalid request"}, 400
 
-    if request.json.get("chal_id", None) is None:
-        return {"error": "No chal_id specified"}, 400
-
-    if user is None:
-        return {"error": "User not found"}, 400
-
     try:
-        challenge = ContainerChallenge.challenge_model.query.filter_by(
-        id=request.json.get("chal_id")).first()
-
+        challenge = ContainerChallenge.challenge_model.query.filter_by(id=request.json.get("chal_id")).first()
         if challenge is None:
-            log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Challenge not found during checking if container is running",
-                            team_id=user.team_id,
+            log("containers_errors", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Challenge not found during checking if container is running",
+                            user_id=user.id,
                             challenge_id=request.json.get("chal_id"))
-            return {"error": "Challenge not found"}, 400
+            return {"error": "An error occured"}, 400
 
-        running_container = ContainerInfoModel.query.filter_by(
-            challenge_id=challenge.id, team_id=user.team_id).first()
+        docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
+
+        if docker_assignment == "user" or "unlimited":
+            running_container = ContainerInfoModel.query.filter_by(
+                challenge_id=challenge.id,
+                user_id=user.id).first()
+        else:
+            running_container = ContainerInfoModel.query.filter_by(
+                challenge_id=challenge.id, team_id=user.team_id).first()
 
         if running_container:
             return {"status": "already_running", "container_id": request.json.get("chal_id")}, 200
@@ -65,11 +66,11 @@ def route_running_container():
             return {"status": "stopped", "container_id": request.json.get("chal_id")}, 200
 
     except Exception as err:
-        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Error checking if container is running ({error})",
-                        team_id=user.team_id,
+        log("containers_errors", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error checking if container is running ({error})",
+                        user_id=user.id,
                         challenge_id=request.json.get("chal_id"),
                         error=str(err))
-        return {"error": str(err)}, 500
+        return {"error": "An error has occurred."}, 500, 500
 
 @containers_bp.route('/api/request', methods=['POST'])
 @authed_only
@@ -79,26 +80,21 @@ def route_running_container():
 def route_request_container():
     user = get_current_user()
 
-    if request.json is None:
+    if request.json is None or request.json.get("chal_id") is None or user is None:
         return {"error": "Invalid request"}, 400
 
-    if request.json.get("chal_id", None) is None:
-        return {"error": "No chal_id specified"}, 400
-
-    if user is None:
-        return {"error": "User not found"}, 400
-
     try:
-        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Creating container",
-                        team_id=user.team_id,
+        docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
+        log("containers_actions", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Creating container",
+                        user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
-        return create_container(container_manager, request.json.get("chal_id"), user.team_id)
-    except ContainerException as err:
-        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Error creating container ({error})",
-                        team_id=user.team_id,
+        return create_container(container_manager, request.json.get("chal_id"), user.id, user.team_id, docker_assignment)
+    except Exception as err:
+        log("containers_errors", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error during creating container ({error})",
+                        user_id=user.id,
                         challenge_id=request.json.get("chal_id"),
                         error=str(err))
-        return {"error": str(err)}, 500
+        return {"error": "An error has occurred."}, 500, 500
 
 @containers_bp.route('/api/renew', methods=['POST'])
 @authed_only
@@ -108,26 +104,21 @@ def route_request_container():
 def route_renew_container():
     user = get_current_user()
 
-    if request.json is None:
+    if request.json is None or request.json.get("chal_id") is None or user is None:
         return {"error": "Invalid request"}, 400
 
-    if request.json.get("chal_id", None) is None:
-        return {"error": "No chal_id specified"}, 400
-
-    if user is None:
-        return {"error": "User not found"}, 400
-
     try:
-        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Renewing container",
-                        team_id=user.team_id,
+        docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
+        log("containers_actions", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Renewing container",
+                        user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
-        return renew_container(container_manager, request.json.get("chal_id"), user.team_id)
-    except ContainerException as err:
-        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Error renewing container ({error})",
-                        team_id=user.team_id,
+        return renew_container(container_manager, request.json.get("chal_id"), user.id, user.team_id, docker_assignment)
+    except Exception as err:
+        log("containers_errors", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error during renewing container ({error})",
+                        user_id=user.id,
                         challenge_id=request.json.get("chal_id"),
                         error=str(err))
-        return {"error": str(err)}, 500
+        return {"error": "An error has occurred."}, 500, 500
 
 @containers_bp.route('/api/reset', methods=['POST'])
 @authed_only
@@ -137,32 +128,32 @@ def route_renew_container():
 def route_restart_container():
     user = get_current_user()
 
-    if request.json is None:
+    if request.json is None or request.json.get("chal_id") is None or user is None:
+        log("containers_errors", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Invalid request",
+                user_id=user.id,
+                challenge_id=request.json.get("chal_id"))
         return {"error": "Invalid request"}, 400
 
-    if request.json.get("chal_id", None) is None:
-        return {"error": "No chal_id specified"}, 400
+    docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
 
-    if user is None:
-        return {"error": "User not found"}, 400
-
-    if user.team_id:
+    if docker_assignment == "user" or "unlimited":
         running_container = ContainerInfoModel.query.filter_by(
-            challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
+            challenge_id=request.json.get("chal_id"),
+            user_id=user.id).first()
     else:
         running_container = ContainerInfoModel.query.filter_by(
             challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
 
     if running_container:
-        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Resetting container",
-                        team_id=user.team_id,
+        log("containers_actions", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Resetting container",
+                        user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
-        kill_container(container_manager, running_container.container_id)
+        kill_container(container_manager, running_container.container_id, request.json.get("chal_id"), user.id)
 
-    log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Recreating container",
-                    team_id=user.team_id,
+    log("containers_actions", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Recreating container",
+                    user_id=user.id,
                     challenge_id=request.json.get("chal_id"))
-    return create_container(container_manager, request.json.get("chal_id"), user.team_id)
+    return create_container(container_manager, request.json.get("chal_id"), user.id, user.team_id, docker_assignment)
 
 @containers_bp.route('/api/stop', methods=['POST'])
 @authed_only
@@ -171,39 +162,35 @@ def route_restart_container():
 @ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_stop_container_post')
 def route_stop_container():
     user = get_current_user()
-    if request.json is None:
+    if request.json is None or request.json.get("chal_id") is None or user is None:
+        log("containers_errors", format="[{date}|IP:{ip}] Invalid request")
         return {"error": "Invalid request"}, 400
 
-    if request.json.get("chal_id", None) is None:
-        return {"error": "No chal_id specified"}, 400
+    docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
 
-    if user is None:
-        return {"error": "User not found"}, 400
-
-    if user.team_id:
+    if docker_assignment == "user" or "unlimited":
         running_container = ContainerInfoModel.query.filter_by(
-            challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
+            challenge_id=request.json.get("chal_id"),
+            user_id=user.id).first()
     else:
         running_container = ContainerInfoModel.query.filter_by(
             challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
 
+    log("containers_actions", format="running_container.container_id = {running_container.container_id}", running_container=running_container.container_id)
+
     if running_container:
-        log("containers", format="[{date}|IP:{ip}|TEAM:{team_id}|CHALL:{challenge_id}] Stopping container",
-                        team_id=user.team_id,
-                        challenge_id=request.json.get("chal_id"))
+        log("containers_actions", format="[{date}|IP:{ip}] Stopping container")
         return kill_container(container_manager, running_container.container_id)
-    return {"error": "No container found"}, 400
+    return {"error": "An error has occured."}, 400
 
 @containers_bp.route('/api/kill', methods=['POST'])
 @admins_only
 def route_kill_container():
-    if request.json is None:
+    if request.json is None or request.json.get("container_id") is None:
+        log("containers_errors", format="[{date}|IP:{ip}|USER:Admin] Invalid request")
         return {"error": "Invalid request"}, 400
 
-    if request.json.get("container_id", None) is None:
-        return {"error": "No container_id specified"}, 400
-
-    log("containers", format="[{date}|IP:{ip}] Admin killing container",
+    log("containers_actions", format="[{date}|IP:{ip}] Admin killing container",
                     challenge_id=request.json.get("chal_id"))
     return kill_container(container_manager, request.json.get("container_id"))
 
@@ -214,9 +201,11 @@ def route_purge_containers():
     for container in containers:
         try:
             kill_container(container_manager, container.container_id)
-        except ContainerException:
-            pass
-    log("containers", format="[{date}|IP:{ip}] Admin purged all containers")
+        except Exception as err:
+            log("containers_errors", format="[{date}|IP:{ip}|USER:Admin] Error during purging containers ({error})",
+                                    error=str(err))
+        pass
+    log("containers_actions", format="[{date}|IP:{ip}] Admin purged all containers")
     return {"success": "Purged all containers"}, 200
 
 @containers_bp.route('/api/images', methods=['GET'])
@@ -224,118 +213,57 @@ def route_purge_containers():
 def route_get_images():
     try:
         images = container_manager.get_images()
-    except ContainerException as err:
-        return {"error": str(err)}
+    except Exception as err:
+        log("containers_errors", format="[{date}|IP:{ip}|USER:Admin] Error during fetching images ({error})",
+                                    error=str(err))
+        return {"error": "An error has occrured."}, 500
 
-    log("containers", format="[{date}|IP:{ip}] Admin retrieved images : '{images}'", images=images)
+    log("containers_actions", format="[{date}|IP:{ip}] Admin retrieved images : '{images}'", images=images)
     return {"images": images}
 
 @containers_bp.route('/api/settings/update', methods=['POST'])
 @admins_only
 def route_update_settings():
-    if request.form.get("docker_base_url") is None:
-        return {"error": "Invalid request"}, 400
+    required_fields = [
+        "docker_base_url", "docker_hostname", "container_expiration",
+        "container_maxmemory", "container_maxcpu", "docker_assignment"
+    ]
 
-    if request.form.get("docker_hostname") is None:
-        return {"error": "Invalid request"}, 400
+    for field in required_fields:
+        if request.form.get(field) is None:
+            return {"error": f"Missing required field: {field}"}, 400
 
-    if request.form.get("container_expiration") is None:
-        return {"error": "Invalid request"}, 400
+    settings = {
+        "docker_base_url": request.form.get("docker_base_url"),
+        "docker_hostname": request.form.get("docker_hostname"),
+        "container_expiration": request.form.get("container_expiration"),
+        "container_maxmemory": request.form.get("container_maxmemory"),
+        "container_maxcpu": request.form.get("container_maxcpu"),
+        "docker_assignment": request.form.get("container_maxcpu")
+    }
 
-    if request.form.get("container_maxmemory") is None:
-        return {"error": "Invalid request"}, 400
-
-    if request.form.get("container_maxcpu") is None:
-        return {"error": "Invalid request"}, 400
-
-    docker_base_url = ContainerSettingsModel.query.filter_by(
-        key="docker_base_url").first()
-
-    docker_hostname = ContainerSettingsModel.query.filter_by(
-        key="docker_hostname").first()
-
-    container_expiration = ContainerSettingsModel.query.filter_by(
-        key="container_expiration").first()
-
-    container_maxmemory = ContainerSettingsModel.query.filter_by(
-        key="container_maxmemory").first()
-
-    container_maxcpu = ContainerSettingsModel.query.filter_by(
-        key="container_maxcpu").first()
-
-    # Create or update
-    if docker_base_url is None:
-        # Create
-        docker_base_url = ContainerSettingsModel(
-            key="docker_base_url", value=request.form.get("docker_base_url"))
-        db.session.add(docker_base_url)
-        log("containers", format="[{date}|IP:{ip}] Admin created 'docker_base_url' setting DB row")
-    else:
-        # Update
-        docker_base_url.value = request.form.get("docker_base_url")
-        log("containers", format="[{date}|IP:{ip}] Admin updated 'docker_base_url' setting DB row")
-
-    # Create or update
-    if docker_hostname is None:
-        # Create
-        docker_hostname = ContainerSettingsModel(
-            key="docker_hostname", value=request.form.get("docker_hostname"))
-        db.session.add(docker_hostname)
-        log("containers", format="[{date}|IP:{ip}] Admin created 'docker_hostname' setting DB row")
-    else:
-        # Update
-        docker_hostname.value = request.form.get("docker_hostname")
-        log("containers", format="[{date}|IP:{ip}] Admin updated 'docker_hostname' setting DB row")
-
-    # Create or update
-    if container_expiration is None:
-        # Create
-        container_expiration = ContainerSettingsModel(
-            key="container_expiration", value=request.form.get("container_expiration"))
-        db.session.add(container_expiration)
-        log("containers", format="[{date}|IP:{ip}] Admin created 'container_expiration' setting DB row")
-    else:
-        # Update
-        container_expiration.value = request.form.get(
-            "container_expiration")
-        log("containers", format="[{date}|IP:{ip}] Admin updated 'container_expiration' setting DB row")
-
-    # Create or update
-    if container_maxmemory is None:
-        # Create
-        container_maxmemory = ContainerSettingsModel(
-            key="container_maxmemory", value=request.form.get("container_maxmemory"))
-        db.session.add(container_maxmemory)
-        log("containers", format="[{date}|IP:{ip}] Admin created 'container_maxmemory' setting DB row")
-    else:
-        # Update
-        container_maxmemory.value = request.form.get("container_maxmemory")
-        log("containers", format="[{date}|IP:{ip}] Admin updated 'container_maxmemory' setting DB row")
-
-    # Create or update
-    if container_maxcpu is None:
-        # Create
-        container_maxcpu = ContainerSettingsModel(
-            key="container_maxcpu", value=request.form.get("container_maxcpu"))
-        db.session.add(container_maxcpu)
-        log("containers", format="[{date}|IP:{ip}] Admin created 'container_maxcpu' setting DB row")
-    else:
-        # Update
-        container_maxcpu.value = request.form.get("container_maxcpu")
-        log("containers", format="[{date}|IP:{ip}] Admin updated 'container_maxcpu' setting DB row")
+    for key, value in settings.items():
+        setting = ContainerSettingsModel.query.filter_by(key=key).first()
+        if setting is None:
+            # Create
+            new_setting = ContainerSettingsModel(key=key, value=value)
+            db.session.add(new_setting)
+            log("containers_actions", format=f"[{{date}}|IP:{{ip}}] Admin created '{key}' setting DB row")
+        else:
+            # Update
+            setting.value = value
+            log("containers_actions", format="[{date}|IP:{ip}] Admin updated '{key}' setting DB row", key=key)
 
     db.session.commit()
 
-    container_manager.settings = settings_to_dict(
-        ContainerSettingsModel.query.all())
+    container_manager.settings = settings_to_dict(ContainerSettingsModel.query.all())
 
     if container_manager.settings.get("docker_base_url") is not None:
         try:
-            container_manager.initialize_connection(
-                container_manager.settings, current_app)
-            log("containers", format="[{date}|IP:{ip}] Admin successfully initialized connection to Docker daemon")
-        except ContainerException as err:
-            log("containers",
+            container_manager.initialize_connection(container_manager.settings, current_app)
+            log("containers_actions", format="[{date}|IP:{ip}] Admin successfully initialized connection to Docker daemon")
+        except Exception as err:
+            log("containers_errors",
                 format="[{date}|IP:{ip}] Admin error initializing connection to Docker daemon ({error})",
                 error=str(err))
             flash(str(err), "error")
@@ -352,7 +280,9 @@ def route_containers_dashboard():
     connected = False
     try:
         connected = container_manager.is_connected()
-    except ContainerException:
+    except Exception as err:
+        log("containers_errors", format="[{date}|IP:{ip}|USER:Admin] Error ({error})",
+                                    error=str(err))
         pass
 
     for i, container in enumerate(running_containers):
@@ -362,7 +292,7 @@ def route_containers_dashboard():
         except ContainerException:
             running_containers[i].is_running = False
 
-    log("containers", format="[{date}|IP:{ip}] Admin Container dashboard called")
+    log("containers_actions", format="[{date}|IP:{ip}] Admin Container dashboard called")
     return render_template('container_dashboard.html', containers=running_containers, connected=connected)
 
 @containers_bp.route('/settings', methods=['GET'])
@@ -371,5 +301,5 @@ def route_containers_settings():
     running_containers = ContainerInfoModel.query.order_by(
         ContainerInfoModel.timestamp.desc()).all()
 
-    log("containers", format="[{date}|IP:{ip}] Admin Container settings called")
+    log("containers_actions", format="[{date}|IP:{ip}] Admin Container settings called")
     return render_template('container_settings.html', settings=container_manager.settings)

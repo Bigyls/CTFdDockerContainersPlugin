@@ -4,7 +4,6 @@ from sqlalchemy.orm import relationship
 from CTFd.models import db
 from CTFd.models import Challenges
 
-
 class ContainerChallengeModel(Challenges):
     __mapper_args__ = {"polymorphic_identity": "container"}
     id = db.Column(
@@ -23,7 +22,6 @@ class ContainerChallengeModel(Challenges):
     def __init__(self, *args, **kwargs):
         super(ContainerChallengeModel, self).__init__(**kwargs)
         self.value = kwargs["initial"]
-
 
 class ContainerInfoModel(db.Model):
     __mapper_args__ = {"polymorphic_identity": "container_info"}
