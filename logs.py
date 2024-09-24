@@ -8,7 +8,7 @@ def init_logs(app):
     logger_containers_errors = logging.getLogger("containers_errors")
 
     logger_containers_actions.setLevel(logging.INFO)
-    logger_containers_errors.setLevel(logging.ERROR)
+    logger_containers_errors.setLevel(logging.INFO)
 
     log_dir = app.config["LOG_FOLDER"]
     if not os.path.exists(log_dir):
