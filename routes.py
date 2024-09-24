@@ -52,7 +52,7 @@ def route_running_container():
 
         docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
 
-        if docker_assignment == "user" or "unlimited":
+        if docker_assignment in ["user", "unlimited"]:
             running_container = ContainerInfoModel.query.filter_by(
                 challenge_id=challenge.id,
                 user_id=user.id).first()
@@ -136,7 +136,7 @@ def route_restart_container():
 
     docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
 
-    if docker_assignment == "user" or "unlimited":
+    if docker_assignment in ["user", "unlimited"]:
         running_container = ContainerInfoModel.query.filter_by(
             challenge_id=request.json.get("chal_id"),
             user_id=user.id).first()
@@ -168,7 +168,7 @@ def route_stop_container():
 
     docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
 
-    if docker_assignment == "user" or "unlimited":
+    if docker_assignment in ["user", "unlimited"]:
         running_container = ContainerInfoModel.query.filter_by(
             challenge_id=request.json.get("chal_id"),
             user_id=user.id).first()
@@ -176,11 +176,10 @@ def route_stop_container():
         running_container = ContainerInfoModel.query.filter_by(
             challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
 
-    log("containers_actions", format="running_container.container_id = {running_container.container_id}", running_container=running_container.container_id)
-
     if running_container:
-        log("containers_actions", format="[{date}|IP:{ip}] Stopping container")
-        return kill_container(container_manager, running_container.container_id)
+        log("containers_actions", format="[{date}|IP:{ip}] Stopping container '{container_id}'",
+                container_id=running_container.container_id)
+        return kill_container(container_manager, running_container.container_id, request.json.get("chal_id"), user.id)
     return {"error": "An error has occured."}, 400
 
 @containers_bp.route('/api/kill', methods=['POST'])
@@ -190,9 +189,8 @@ def route_kill_container():
         log("containers_errors", format="[{date}|IP:{ip}|USER:Admin] Invalid request")
         return {"error": "Invalid request"}, 400
 
-    log("containers_actions", format="[{date}|IP:{ip}] Admin killing container",
-                    challenge_id=request.json.get("chal_id"))
-    return kill_container(container_manager, request.json.get("container_id"))
+    log("containers_actions", format="[{date}|IP:{ip}] Admin killing container")
+    return kill_container(container_manager, request.json.get("container_id"), "N/A", 1)
 
 @containers_bp.route('/api/purge', methods=['POST'])
 @admins_only
@@ -200,10 +198,12 @@ def route_purge_containers():
     containers = ContainerInfoModel.query.all()
     for container in containers:
         try:
-            kill_container(container_manager, container.container_id)
+            log("containers_actions", format="[{date}|IP:{ip}] Admin killing container '{container_id}'",
+                    container_id=container.container_id)
+            kill_container(container_manager, container.container_id, "N/A", 1)
         except Exception as err:
             log("containers_errors", format="[{date}|IP:{ip}|USER:Admin] Error during purging containers ({error})",
-                                    error=str(err))
+                    error=str(err))
         pass
     log("containers_actions", format="[{date}|IP:{ip}] Admin purged all containers")
     return {"success": "Purged all containers"}, 200
@@ -239,7 +239,7 @@ def route_update_settings():
         "container_expiration": request.form.get("container_expiration"),
         "container_maxmemory": request.form.get("container_maxmemory"),
         "container_maxcpu": request.form.get("container_maxcpu"),
-        "docker_assignment": request.form.get("container_maxcpu")
+        "docker_assignment": request.form.get("docker_assignment")
     }
 
     for key, value in settings.items():

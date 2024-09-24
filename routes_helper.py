@@ -21,7 +21,8 @@ def format_time_filter(unix_seconds):
         datetime.timezone.utc).astimezone().tzinfo).isoformat()
 
 def kill_container(container_manager, container_id, challenge_id, user_id):
-    container: ContainerInfoModel = ContainerInfoModel.query.filter_by(
+
+    container = ContainerInfoModel.query.filter_by(
         container_id=container_id).first()
 
     try:
@@ -31,6 +32,11 @@ def kill_container(container_manager, container_id, challenge_id, user_id):
                         container_id=container_id)
         container_manager.kill_container(container_id)
     except Exception as err:
+        log("containers_actions", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Container '{container_id}' could not be killed ({error})",
+                user_id=user_id,
+                challenge_id=challenge_id,
+                container_id=container_id,
+                error=str(err))
         log("containers_errors", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Container '{container_id}' could not be killed ({error})",
                         user_id=user_id,
                         challenge_id=challenge_id,
@@ -59,7 +65,7 @@ def renew_container(container_manager, challenge_id, user_id, team_id, docker_as
                         challenge_id=challenge_id)
         return {"error": "An error has occurred."}, 500, 400
 
-    if docker_assignment == "user" or "unlimited":
+    if docker_assignment in ["user", "unlimited"]:
         running_container = ContainerInfoModel.query.filter_by(
             challenge_id=challenge_id,
             user_id=user_id).first()
@@ -105,7 +111,7 @@ def create_container(container_manager, challenge_id, user_id, team_id, docker_a
         return {"error": "An error has occurred."}, 500, 400
 
     # Check for any existing containers for the team
-    if docker_assignment == "user" or "unlimited":
+    if docker_assignment in ["user", "unlimited"]:
         running_containers = ContainerInfoModel.query.filter_by(
         challenge_id=challenge.id, user_id=user_id)
         running_container = running_containers.first()
