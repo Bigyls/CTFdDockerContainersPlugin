@@ -50,7 +50,7 @@ def route_running_container():
                             challenge_id=request.json.get("chal_id"))
             return {"error": "An error occured"}, 400
 
-        docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
+        docker_assignment = container_manager.settings.get("docker_assignment")
 
         if docker_assignment in ["user", "unlimited"]:
             running_container = ContainerInfoModel.query.filter_by(
@@ -84,7 +84,7 @@ def route_request_container():
         return {"error": "Invalid request"}, 400
 
     try:
-        docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
+        docker_assignment = container_manager.settings.get("docker_assignment")
         log("containers_actions", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Creating container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
@@ -108,7 +108,7 @@ def route_renew_container():
         return {"error": "Invalid request"}, 400
 
     try:
-        docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
+        docker_assignment = container_manager.settings.get("docker_assignment")
         log("containers_actions", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Renewing container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
@@ -134,7 +134,7 @@ def route_restart_container():
                 challenge_id=request.json.get("chal_id"))
         return {"error": "Invalid request"}, 400
 
-    docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
+    docker_assignment = container_manager.settings.get("docker_assignment")
 
     if docker_assignment in ["user", "unlimited"]:
         running_container = ContainerInfoModel.query.filter_by(
@@ -166,7 +166,7 @@ def route_stop_container():
         log("containers_errors", format="[{date}|IP:{ip}] Invalid request")
         return {"error": "Invalid request"}, 400
 
-    docker_assignment = container_manager.settings.get("docker_assignment", "unlimited")
+    docker_assignment = container_manager.settings.get("docker_assignment")
 
     if docker_assignment in ["user", "unlimited"]:
         running_container = ContainerInfoModel.query.filter_by(
@@ -271,29 +271,45 @@ def route_update_settings():
 
     return redirect(url_for(".route_containers_dashboard"))
 
+from flask import current_app
+import traceback
+
 @containers_bp.route('/dashboard', methods=['GET'])
 @admins_only
 def route_containers_dashboard():
-    running_containers = ContainerInfoModel.query.order_by(
-        ContainerInfoModel.timestamp.desc()).all()
-
-    connected = False
     try:
-        connected = container_manager.is_connected()
-    except Exception as err:
-        log("containers_errors", format="[{date}|IP:{ip}|USER:Admin] Error ({error})",
-                                    error=str(err))
-        pass
+        running_containers = ContainerInfoModel.query.order_by(
+            ContainerInfoModel.timestamp.desc()).all()
 
-    for i, container in enumerate(running_containers):
+        connected = False
         try:
-            running_containers[i].is_running = container_manager.is_container_running(
-                container.container_id)
-        except ContainerException:
-            running_containers[i].is_running = False
+            connected = container_manager.is_connected()
+        except Exception as err:
+            log("containers_errors", format="[{date}|IP:{ip}] Error checking if Docker daemon is connected ({error})",
+                    error=str(err))
 
-    log("containers_actions", format="[{date}|IP:{ip}] Admin Container dashboard called")
-    return render_template('container_dashboard.html', containers=running_containers, connected=connected)
+        for i, container in enumerate(running_containers):
+            try:
+                running_containers[i].is_running = container_manager.is_container_running(
+                    container.container_id)
+            except Exception as err:
+                log("containers_errors", format="[{date}|IP:{ip}] Error checking if container is running ({error})",
+                        error=str(err))
+                running_containers[i].is_running = False
+
+        # Get the docker_assignment setting
+        docker_assignment = container_manager.settings.get("docker_assignment")
+
+        current_app.logger.info(f"Rendering dashboard with {len(running_containers)} containers and docker_assignment: {docker_assignment}")
+
+        return render_template('container_dashboard.html', 
+                               containers=running_containers, 
+                               connected=connected, 
+                               settings={'docker_assignment': docker_assignment})
+    except Exception as err:
+        log("containers_errors", format="[{date}|IP:{ip}] Error rendering container dashboard ({error})",
+                error=str(err))
+        return f"An error has occurred.", 500  # Return error message and 500 status code
 
 @containers_bp.route('/settings', methods=['GET'])
 @admins_only
