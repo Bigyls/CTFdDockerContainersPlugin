@@ -250,6 +250,11 @@ def route_get_images():
                 error=str(err))
         return {"error": "An error has occurred."}, 500
 
+from CTFd.utils import get_config, set_config
+from CTFd.utils.user import get_current_user
+from flask import request, redirect, url_for, flash, current_app
+from CTFd.models import db
+
 @containers_bp.route('/api/settings/update', methods=['POST'])
 @admins_only
 def route_update_settings():
@@ -277,16 +282,9 @@ def route_update_settings():
     }
 
     for key, value in settings.items():
-        setting = ContainerSettingsModel.query.filter_by(key=key).first()
-        if setting is None:
-            new_setting = ContainerSettingsModel(key=key, value=value)
-            db.session.add(new_setting)
-            log("containers_actions", format="Admin created new setting: {key}={value}",
-                    key=key,
-                    value=value)
-        else:
-            old_value = setting.value
-            setting.value = value
+            config_key = f"containers:{key}"
+            old_value = get_config(config_key)
+            set_config(config_key, value)
             log("containers_actions", format="Admin updated setting {key}: {old_value} -> {new_value}",
                     key=key,
                     old_value=old_value,
@@ -295,7 +293,10 @@ def route_update_settings():
     db.session.commit()
     log("containers_actions", format="Admin committed settings changes to database")
 
-    container_manager.settings = settings_to_dict(ContainerSettingsModel.query.all())
+    # Update container_manager settings
+    container_manager.settings = {
+        key: get_config(f"containers:{key}") for key in settings.keys()
+    }
     log("containers_debug", format="Admin updated container_manager settings")
 
     if container_manager.settings.get("docker_base_url") is not None:
@@ -309,9 +310,6 @@ def route_update_settings():
             return redirect(url_for(".route_containers_settings"))
 
     return redirect(url_for(".route_containers_dashboard"))
-
-from flask import request, render_template, current_app
-from CTFd.utils.user import get_current_user
 
 @containers_bp.route('/dashboard', methods=['GET'])
 @admins_only

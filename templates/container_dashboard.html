@@ -41,51 +41,52 @@
 	<span class="badge badge-danger">Docker Not Connected</span>
 	{% endif %}
 
-<table class="table">
-	<thead>
-		<tr>
-			<td><strong>Container ID</strong></td>
-			<td><strong>Image</strong></td>
-			<td><strong>Challenge</strong></td>
-			<td><strong>Assignment</strong></td>
-			<td><strong>Port</strong></td>
-			<td><strong>Created</strong></td>
-			<td><strong>Expires</strong></td>
-			<td><strong>Running</strong></td>
-			<td><strong>Kill</strong></td>
-		</tr>
-	</thead>
-	<tbody>
-		{% if containers %}
-		{% for c in containers %}
-		<tr>
-			<td class="container_item" id="{{ c.container_id }}">{{ c.container_id[:12] }}</td>
-			<td>{{ c.challenge.image }}</td>
-			<td>{{ c.challenge.name }} [{{ c.challenge_id }}]</td>
-			<td>
-				{% if settings.docker_assignment == 'team' %}
+	<table class="table">
+		<thead>
+			<tr>
+				<td><strong>Container ID</strong></td>
+				<td><strong>Image</strong></td>
+				<td><strong>Challenge</strong></td>
+				<td><strong>Assignment</strong></td>
+				<td><strong>Port</strong></td>
+				<td><strong>Created</strong></td>
+				<td><strong>Expires</strong></td>
+				<td><strong>Running</strong></td>
+				<td><strong>Kill</strong></td>
+			</tr>
+		</thead>
+		<tbody>
+			{% if containers %}
+			{% for c in containers %}
+			<tr>
+				<td class="container_item" id="{{ c.container_id }}">{{ c.container_id[:12] }}</td>
+				<td>{{ c.challenge.image }}</td>
+				<td>{{ c.challenge.name }} [{{ c.challenge_id }}]</td>
+				<td>
+					{% set docker_assignment = get_config('containers:docker_assignment', '') %}
+					{% if docker_assignment == 'team' %}
 					Team: {{ c.team.name }} [{{ c.team_id }}]
-				{% elif settings.docker_assignment == 'user' %}
+					{% elif docker_assignment == 'user' %}
 					User: {{ c.user.name }} [{{ c.user_id }}]
+					{% else %}
+					User: {{ c.user.name }} [{{ c.user_id }}]
+					{% endif %}
+				</td>
+				<td>{{ c.port }}</td>
+				<td>{{ c.timestamp|format_time }}</td>
+				<td>{{ c.expires|format_time }}</td>
+				{% if c.is_running %}
+				<td><span class="badge badge-success">Yes</span></td>
 				{% else %}
-					User: {{ c.user.name }} [{{ c.user_id }}]
+				<td><span class="badge badge-danger">No</span></td>
 				{% endif %}
-			</td>
-			<td>{{ c.port }}</td>
-			<td>{{ c.timestamp|format_time }}</td>
-			<td>{{ c.expires|format_time }}</td>
-			{% if c.is_running %}
-			<td><span class="badge badge-success">Yes</span></td>
-			{% else %}
-			<td><span class="badge badge-danger">No</span></td>
+				<td><button class="btn btn-danger containers-kill-btn"
+						onclick="killContainer('{{ c.container_id }}')"><i class="fa fa-times"></i></button></td>
+			</tr>
+			{% endfor %}
 			{% endif %}
-			<td><button class="btn btn-danger containers-kill-btn" onclick="killContainer('{{ c.container_id }}')"><i
-						class="fa fa-times"></i></button></td>
-		</tr>
-		{% endfor %}
-		{% endif %}
-	</tbody>
-</table>
+		</tbody>
+	</table>
 </div>
 
 {% endblock %}

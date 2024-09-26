@@ -4,7 +4,7 @@ from .models import db
 def setup_default_configs():
     for key, val in {
         "setup": "true",
-        "docker_base_url": "unix:///var/run/docker.sock",
+        "docker_base_url": "unix://var/run/docker.sock",
         "docker_hostname": "",
         "container_expiration": "45",
         "container_maxmemory": "512",
