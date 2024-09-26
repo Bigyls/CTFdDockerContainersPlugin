@@ -2,13 +2,17 @@ from flask import Flask
 
 from CTFd.plugins import register_plugin_assets_directory
 from CTFd.plugins.challenges import CHALLENGE_CLASSES
+from CTFd.utils import get_config
 
 from .container_challenge import ContainerChallenge
+from .setup import setup_default_configs
 from .routes import register_app
 from .logs import init_logs
 
 def load(app: Flask):
     app.db.create_all()
+    if not get_config("container_settings_model:setup"):
+        setup_default_configs()
     CHALLENGE_CLASSES["container"] = ContainerChallenge
     register_plugin_assets_directory(app, base_path="/plugins/containers/assets/")
 
