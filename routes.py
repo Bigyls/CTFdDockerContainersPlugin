@@ -1,5 +1,3 @@
-import time
-import json
 import datetime
 
 from flask import Blueprint, request, Flask, render_template, url_for, redirect, flash, current_app
@@ -7,10 +5,10 @@ from flask import Blueprint, request, Flask, render_template, url_for, redirect,
 from CTFd.models import db
 from CTFd.utils.decorators import authed_only, admins_only, during_ctf_time_only, ratelimit, require_verified_emails
 from CTFd.utils.user import get_current_user
-from CTFd.utils.logging import log
 
+from .logs import log
 from .models import ContainerInfoModel, ContainerSettingsModel
-from .container_manager import ContainerManager, ContainerException
+from .container_manager import ContainerManager
 from .container_challenge import ContainerChallenge
 from .routes_helper import format_time_filter, create_container, renew_container, kill_container
 
@@ -40,12 +38,13 @@ def route_running_container():
     user = get_current_user()
 
     if request.json is None or request.json.get("chal_id") is None or user is None:
+        log("containers_errors", format=" Invalid request")
         return {"error": "Invalid request"}, 400
 
     try:
         challenge = ContainerChallenge.challenge_model.query.filter_by(id=request.json.get("chal_id")).first()
         if challenge is None:
-            log("containers_errors", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Challenge not found during checking if container is running",
+            log("containers_errors", format="CHALL:{challenge_id} Challenge not found during checking if container is running",
                             user_id=user.id,
                             challenge_id=request.json.get("chal_id"))
             return {"error": "An error occured"}, 400
@@ -66,11 +65,11 @@ def route_running_container():
             return {"status": "stopped", "container_id": request.json.get("chal_id")}, 200
 
     except Exception as err:
-        log("containers_errors", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error checking if container is running ({error})",
+        log("containers_errors", format="CHALL:{challenge_id} Error checking if container is running ({error})",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"),
                         error=str(err))
-        return {"error": "An error has occurred."}, 500, 500
+        return {"error": "An error has occurred."}, 500
 
 @containers_bp.route('/api/request', methods=['POST'])
 @authed_only
@@ -81,20 +80,21 @@ def route_request_container():
     user = get_current_user()
 
     if request.json is None or request.json.get("chal_id") is None or user is None:
+        log("containers_errors", format="] Invalid request")
         return {"error": "Invalid request"}, 400
 
     try:
         docker_assignment = container_manager.settings.get("docker_assignment")
-        log("containers_actions", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Creating container",
+        log("containers_actions", format="CHALL:{challenge_id} Creating container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
         return create_container(container_manager, request.json.get("chal_id"), user.id, user.team_id, docker_assignment)
     except Exception as err:
-        log("containers_errors", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error during creating container ({error})",
+        log("containers_errors", format="CHALL:{challenge_id} Error during creating container ({error})",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"),
                         error=str(err))
-        return {"error": "An error has occurred."}, 500, 500
+        return {"error": "An error has occurred."}, 500
 
 @containers_bp.route('/api/renew', methods=['POST'])
 @authed_only
@@ -105,20 +105,21 @@ def route_renew_container():
     user = get_current_user()
 
     if request.json is None or request.json.get("chal_id") is None or user is None:
+        log("containers_errors", format=" Invalid request")
         return {"error": "Invalid request"}, 400
 
     try:
         docker_assignment = container_manager.settings.get("docker_assignment")
-        log("containers_actions", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Renewing container",
+        log("containers_actions", format="CHALL:{challenge_id} Renewing container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
         return renew_container(container_manager, request.json.get("chal_id"), user.id, user.team_id, docker_assignment)
     except Exception as err:
-        log("containers_errors", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Error during renewing container ({error})",
+        log("containers_errors", format="CHALL:{challenge_id} Error during renewing container ({error})",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"),
                         error=str(err))
-        return {"error": "An error has occurred."}, 500, 500
+        return {"error": "An error has occurred."}, 500
 
 @containers_bp.route('/api/reset', methods=['POST'])
 @authed_only
@@ -129,9 +130,7 @@ def route_restart_container():
     user = get_current_user()
 
     if request.json is None or request.json.get("chal_id") is None or user is None:
-        log("containers_errors", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Invalid request",
-                user_id=user.id,
-                challenge_id=request.json.get("chal_id"))
+        log("containers_errors", format="] Invalid request")
         return {"error": "Invalid request"}, 400
 
     docker_assignment = container_manager.settings.get("docker_assignment")
@@ -145,12 +144,12 @@ def route_restart_container():
             challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
 
     if running_container:
-        log("containers_actions", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Resetting container",
+        log("containers_actions", format="CHALL:{challenge_id} Resetting container",
                         user_id=user.id,
                         challenge_id=request.json.get("chal_id"))
         kill_container(container_manager, running_container.container_id, request.json.get("chal_id"), user.id)
 
-    log("containers_actions", format="[{date}|IP:{ip}|USER:{user_id}|CHALL:{challenge_id}] Recreating container",
+    log("containers_actions", format="CHALL:{challenge_id} Recreating container",
                     user_id=user.id,
                     challenge_id=request.json.get("chal_id"))
     return create_container(container_manager, request.json.get("chal_id"), user.id, user.team_id, docker_assignment)
@@ -163,7 +162,7 @@ def route_restart_container():
 def route_stop_container():
     user = get_current_user()
     if request.json is None or request.json.get("chal_id") is None or user is None:
-        log("containers_errors", format="[{date}|IP:{ip}] Invalid request")
+        log("containers_errors", format=" Invalid request")
         return {"error": "Invalid request"}, 400
 
     docker_assignment = container_manager.settings.get("docker_assignment")
@@ -177,7 +176,7 @@ def route_stop_container():
             challenge_id=request.json.get("chal_id"), team_id=user.team_id).first()
 
     if running_container:
-        log("containers_actions", format="[{date}|IP:{ip}] Stopping container '{container_id}'",
+        log("containers_actions", format=" Stopping container '{container_id}'",
                 container_id=running_container.container_id)
         return kill_container(container_manager, running_container.container_id, request.json.get("chal_id"), user.id)
     return {"error": "An error has occured."}, 400
@@ -186,10 +185,11 @@ def route_stop_container():
 @admins_only
 def route_kill_container():
     if request.json is None or request.json.get("container_id") is None:
-        log("containers_errors", format="[{date}|IP:{ip}|USER:Admin] Invalid request")
+        log("containers_errors", format="USER:Admin Invalid request")
         return {"error": "Invalid request"}, 400
 
-    log("containers_actions", format="[{date}|IP:{ip}] Admin killing container")
+    log("containers_actions", format=" Admin killing container '{container_id}'",
+            container_id=request.json.get("container_id"))
     return kill_container(container_manager, request.json.get("container_id"), "N/A", 1)
 
 @containers_bp.route('/api/purge', methods=['POST'])
@@ -198,14 +198,14 @@ def route_purge_containers():
     containers = ContainerInfoModel.query.all()
     for container in containers:
         try:
-            log("containers_actions", format="[{date}|IP:{ip}] Admin killing container '{container_id}'",
+            log("containers_actions", format=" Admin killing container '{container_id}'",
                     container_id=container.container_id)
             kill_container(container_manager, container.container_id, "N/A", 1)
         except Exception as err:
-            log("containers_errors", format="[{date}|IP:{ip}|USER:Admin] Error during purging containers ({error})",
+            log("containers_errors", format="USER:Admin Error during purging containers ({error})",
                     error=str(err))
         pass
-    log("containers_actions", format="[{date}|IP:{ip}] Admin purged all containers")
+    log("containers_actions", format=" Admin purged all containers")
     return {"success": "Purged all containers"}, 200
 
 @containers_bp.route('/api/images', methods=['GET'])
@@ -214,11 +214,11 @@ def route_get_images():
     try:
         images = container_manager.get_images()
     except Exception as err:
-        log("containers_errors", format="[{date}|IP:{ip}|USER:Admin] Error during fetching images ({error})",
+        log("containers_errors", format="USER:Admin Error during fetching images ({error})",
                                     error=str(err))
         return {"error": "An error has occrured."}, 500
 
-    log("containers_actions", format="[{date}|IP:{ip}] Admin retrieved images : '{images}'", images=images)
+    log("containers_actions", format=" Admin retrieved images : '{images}'", images=images)
     return {"images": images}
 
 @containers_bp.route('/api/settings/update', methods=['POST'])
@@ -252,7 +252,7 @@ def route_update_settings():
         else:
             # Update
             setting.value = value
-            log("containers_actions", format="[{date}|IP:{ip}] Admin updated '{key}' setting DB row", key=key)
+            log("containers_actions", format=" Admin updated '{key}' setting DB row", key=key)
 
     db.session.commit()
 
@@ -261,10 +261,10 @@ def route_update_settings():
     if container_manager.settings.get("docker_base_url") is not None:
         try:
             container_manager.initialize_connection(container_manager.settings, current_app)
-            log("containers_actions", format="[{date}|IP:{ip}] Admin successfully initialized connection to Docker daemon")
+            log("containers_actions", format=" Admin successfully initialized connection to Docker daemon")
         except Exception as err:
             log("containers_errors",
-                format="[{date}|IP:{ip}] Admin error initializing connection to Docker daemon ({error})",
+                format=" Admin error initializing connection to Docker daemon ({error})",
                 error=str(err))
             flash(str(err), "error")
             return redirect(url_for(".route_containers_settings"))
@@ -285,7 +285,7 @@ def route_containers_dashboard():
         try:
             connected = container_manager.is_connected()
         except Exception as err:
-            log("containers_errors", format="[{date}|IP:{ip}] Error checking if Docker daemon is connected ({error})",
+            log("containers_errors", format=" Error checking if Docker daemon is connected ({error})",
                     error=str(err))
 
         for i, container in enumerate(running_containers):
@@ -293,7 +293,7 @@ def route_containers_dashboard():
                 running_containers[i].is_running = container_manager.is_container_running(
                     container.container_id)
             except Exception as err:
-                log("containers_errors", format="[{date}|IP:{ip}] Error checking if container is running ({error})",
+                log("containers_errors", format=" Error checking if container is running ({error})",
                         error=str(err))
                 running_containers[i].is_running = False
 
@@ -307,7 +307,7 @@ def route_containers_dashboard():
                                connected=connected, 
                                settings={'docker_assignment': docker_assignment})
     except Exception as err:
-        log("containers_errors", format="[{date}|IP:{ip}] Error rendering container dashboard ({error})",
+        log("containers_errors", format=" Error rendering container dashboard ({error})",
                 error=str(err))
         return f"An error has occurred.", 500  # Return error message and 500 status code
 
@@ -317,5 +317,5 @@ def route_containers_settings():
     running_containers = ContainerInfoModel.query.order_by(
         ContainerInfoModel.timestamp.desc()).all()
 
-    log("containers_actions", format="[{date}|IP:{ip}] Admin Container settings called")
+    log("containers_actions", format=" Admin Container settings called")
     return render_template('container_settings.html', settings=container_manager.settings)
