@@ -5,7 +5,9 @@ It handles the registration of the container challenge type, sets up logging,
 and registers the plugin's routes and assets with the CTFd application.
 """
 
+from typing import Any
 from flask import Flask
+from flask.blueprints import Blueprint
 
 from CTFd.plugins import register_plugin_assets_directory
 from CTFd.plugins.challenges import CHALLENGE_CLASSES
@@ -16,7 +18,7 @@ from .setup import setup_default_configs
 from .routes import register_app
 from .logs import init_logs
 
-def load(app: Flask):
+def load(app: Flask) -> None:
     """
     Initialize and set up the containers plugin for CTFd.
 
@@ -47,5 +49,5 @@ def load(app: Flask):
     init_logs(app)
 
     # Get the blueprint from register_app and register it here
-    containers_bp = register_app(app)
+    containers_bp: Blueprint = register_app(app)
     app.register_blueprint(containers_bp)

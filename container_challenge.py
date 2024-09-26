@@ -6,8 +6,10 @@ to provide functionality for container-based challenges in CTFd.
 from __future__ import division
 
 import math
+from typing import Dict, Any, Optional
 
-from CTFd.models import db, Solves
+from flask import Request
+from CTFd.models import db, Solves, Users, Teams
 from CTFd.plugins.challenges import BaseChallenge
 from CTFd.utils.modes import get_model
 
@@ -22,25 +24,25 @@ class ContainerChallenge(BaseChallenge):
     their dynamic point values.
     """
 
-    id = "container"  # Unique identifier used to register challenges
-    name = "container"  # Name of a challenge type
-    templates = {  # Handlebars templates used for each aspect of challenge editing & viewing
+    id: str = "container"  # Unique identifier used to register challenges
+    name: str = "container"  # Name of a challenge type
+    templates: Dict[str, str] = {  # Handlebars templates used for each aspect of challenge editing & viewing
         "create": "/plugins/containers/assets/create.html",
         "update": "/plugins/containers/assets/update.html",
         "view": "/plugins/containers/assets/view.html",
     }
-    scripts = {  # Scripts that are loaded when a template is loaded
+    scripts: Dict[str, str] = {  # Scripts that are loaded when a template is loaded
         "create": "/plugins/containers/assets/create.js",
         "update": "/plugins/containers/assets/update.js",
         "view": "/plugins/containers/assets/view.js",
     }
     # Route at which files are accessible. This must be registered using register_plugin_assets_directory()
-    route = "/plugins/containers/assets/"
+    route: str = "/plugins/containers/assets/"
 
     challenge_model = ContainerChallengeModel
 
     @classmethod
-    def read(cls, challenge):
+    def read(cls, challenge: ContainerChallengeModel) -> Dict[str, Any]:
         """
         Access the data of a challenge in a format processable by the front end.
 
@@ -48,9 +50,9 @@ class ContainerChallenge(BaseChallenge):
             challenge: The challenge object to read data from.
 
         Returns:
-            dict: A dictionary containing the challenge data for frontend processing.
+            A dictionary containing the challenge data for frontend processing.
         """
-        data = {
+        data: Dict[str, Any] = {
             "id": challenge.id,
             "name": challenge.name,
             "value": challenge.value,
@@ -76,7 +78,7 @@ class ContainerChallenge(BaseChallenge):
         return data
 
     @classmethod
-    def calculate_value(cls, challenge):
+    def calculate_value(cls, challenge: ContainerChallengeModel) -> ContainerChallengeModel:
         """
         Calculate the dynamic point value for a challenge based on solve count.
 
@@ -88,7 +90,7 @@ class ContainerChallenge(BaseChallenge):
         """
         Model = get_model()
 
-        solve_count = (
+        solve_count: int = (
             Solves.query.join(Model, Solves.account_id == Model.id)
             .filter(
                 Solves.challenge_id == challenge.id,
@@ -98,15 +100,10 @@ class ContainerChallenge(BaseChallenge):
             .count()
         )
 
-        # If the solve count is 0 we shouldn't manipulate the solve count to
-        # let the math update back to normal
         if solve_count != 0:
-            # We subtract -1 to allow the first solver to get max point value
             solve_count -= 1
 
-        # It is important that this calculation takes into account floats.
-        # Hence this file uses from __future__ import division
-        value = (
+        value: float = (
             ((challenge.minimum - challenge.initial) / (challenge.decay ** 2))
             * (solve_count ** 2)
         ) + challenge.initial
@@ -121,7 +118,7 @@ class ContainerChallenge(BaseChallenge):
         return challenge
 
     @classmethod
-    def update(cls, challenge, request):
+    def update(cls, challenge: ContainerChallengeModel, request: Request) -> ContainerChallengeModel:
         """
         Update the information associated with a challenge.
 
@@ -132,10 +129,9 @@ class ContainerChallenge(BaseChallenge):
         Returns:
             The updated challenge object with recalculated value.
         """
-        data = request.form or request.get_json()
+        data: Dict[str, Any] = request.form or request.get_json()
 
         for attr, value in data.items():
-            # We need to set these to floats so that the next operations don't operate on strings
             if attr in ("initial", "minimum", "decay"):
                 value = float(value)
             setattr(challenge, attr, value)
@@ -143,7 +139,7 @@ class ContainerChallenge(BaseChallenge):
         return ContainerChallenge.calculate_value(challenge)
 
     @classmethod
-    def solve(cls, user, team, challenge, request):
+    def solve(cls, user: Users, team: Optional[Teams], challenge: ContainerChallengeModel, request: Request) -> None:
         """
         Handle the solving of a challenge by a user or team.
 
