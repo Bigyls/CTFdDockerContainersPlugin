@@ -1,3 +1,9 @@
+"""
+This module provides utility functions for managing containers in the CTFd platform.
+It includes functions for killing, renewing, and creating containers, as well as
+helper functions for formatting time and converting settings to a dictionary.
+"""
+
 import time
 import json
 import datetime
@@ -9,15 +15,44 @@ from .models import ContainerInfoModel
 from .container_challenge import ContainerChallenge
 
 def settings_to_dict(settings):
+    """
+    Convert settings objects to a dictionary.
+
+    Args:
+        settings (list): A list of setting objects.
+
+    Returns:
+        dict: A dictionary of setting key-value pairs.
+    """
     return {
         setting.key: setting.value for setting in settings
     }
 
 def format_time_filter(unix_seconds):
+    """
+    Convert Unix timestamp to ISO format string.
+
+    Args:
+        unix_seconds (int): Unix timestamp in seconds.
+
+    Returns:
+        str: ISO formatted date-time string.
+    """
     return datetime.datetime.fromtimestamp(unix_seconds, tz=datetime.datetime.now(
         datetime.timezone.utc).astimezone().tzinfo).isoformat()
 
 def kill_container(container_manager, container_id, challenge_id):
+    """
+    Kill a running container and remove it from the database.
+
+    Args:
+        container_manager: The container manager object.
+        container_id (str): The ID of the container to kill.
+        challenge_id (int): The ID of the associated challenge.
+
+    Returns:
+        tuple: A tuple containing a dictionary with the result and an HTTP status code.
+    """
     log("containers_debug", format="CHALL_ID:{challenge_id}|Initiating container kill process for container '{container_id}'",
             challenge_id=challenge_id,
             container_id=container_id)
@@ -67,6 +102,19 @@ def kill_container(container_manager, container_id, challenge_id):
     return {"success": "Container killed and removed"}
 
 def renew_container(container_manager, challenge_id, user_id, team_id, docker_assignment):
+    """
+    Renew the expiration time of a running container.
+
+    Args:
+        container_manager: The container manager object.
+        challenge_id (int): The ID of the associated challenge.
+        user_id (int): The ID of the user.
+        team_id (int): The ID of the team.
+        docker_assignment (str): The docker assignment mode.
+
+    Returns:
+        tuple: A tuple containing a dictionary with the result and an HTTP status code.
+    """
     log("containers_debug", format="CHALL_ID:{challenge_id}|Initiating container renewal process",
             challenge_id=challenge_id)
 
@@ -120,6 +168,19 @@ def renew_container(container_manager, challenge_id, user_id, team_id, docker_as
         return {"error": "Failed to renew container"}, 500
 
 def create_container(container_manager, challenge_id, user_id, team_id, docker_assignment):
+    """
+    Create a new container for a challenge.
+
+    Args:
+        container_manager: The container manager object.
+        challenge_id (int): The ID of the associated challenge.
+        user_id (int): The ID of the user.
+        team_id (int): The ID of the team.
+        docker_assignment (str): The docker assignment mode.
+
+    Returns:
+        str: A JSON string containing the container creation result.
+    """
     log("containers_debug", format="CHALL_ID:{challenge_id}|Initiating container creation process",
             challenge_id=challenge_id)
 

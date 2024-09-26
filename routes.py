@@ -1,3 +1,10 @@
+"""
+This module defines the routes and blueprint for the containers plugin in CTFd.
+It handles container management operations such as running, requesting, renewing,
+resetting, stopping, and purging containers, as well as administrative functions
+like updating settings and viewing the container dashboard.
+"""
+
 import datetime
 
 from flask import Blueprint, request, Flask, render_template, url_for, redirect, flash, current_app
@@ -5,6 +12,7 @@ from flask import Blueprint, request, Flask, render_template, url_for, redirect,
 from CTFd.models import db
 from CTFd.utils.decorators import authed_only, admins_only, during_ctf_time_only, ratelimit, require_verified_emails
 from CTFd.utils.user import get_current_user
+from CTFd.utils import get_config, set_config
 
 from .logs import log
 from .models import ContainerInfoModel, ContainerSettingsModel
@@ -16,15 +24,32 @@ containers_bp = Blueprint(
     'containers', __name__, template_folder='templates', static_folder='assets', url_prefix='/containers')
 
 def settings_to_dict(settings):
+    """
+    Convert settings objects to a dictionary.
+    """
     return {setting.key: setting.value for setting in settings}
 
 def register_app(app: Flask):
+    """
+    Register the containers blueprint with the Flask app.
+
+    Args:
+        app (Flask): The Flask application instance.
+
+    Returns:
+        Blueprint: The registered containers blueprint.
+    """
     container_settings = settings_to_dict(ContainerSettingsModel.query.all())
+    log("containers_debug", format="Registering containers blueprint with settings: {settings}",
+        settings=container_settings)
     global container_manager
     container_manager = ContainerManager(container_settings, app)
     return containers_bp
 
 def format_time_filter(timestamp):
+    """
+    Format a timestamp into a readable string.
+    """
     return datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
 
 containers_bp.app_template_filter("format_time")(format_time_filter)
@@ -35,6 +60,9 @@ containers_bp.app_template_filter("format_time")(format_time_filter)
 @require_verified_emails
 @ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_running_container_post')
 def route_running_container():
+    """
+    Check if a container is running for a given challenge.
+    """
     user = get_current_user()
     log("containers_debug", format="Checking running container status")
 
@@ -84,6 +112,9 @@ def route_running_container():
 @require_verified_emails
 @ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_request_container_post')
 def route_request_container():
+    """
+    Request a new container for a challenge.
+    """
     user = get_current_user()
     log("containers_debug", format="Requesting container")
 
@@ -110,6 +141,9 @@ def route_request_container():
 @require_verified_emails
 @ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_renew_container_post')
 def route_renew_container():
+    """
+    Renew an existing container for a challenge.
+    """
     user = get_current_user()
     log("containers_debug", format="Requesting container renewal")
 
@@ -136,6 +170,9 @@ def route_renew_container():
 @require_verified_emails
 @ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_restart_container_post')
 def route_restart_container():
+    """
+    Restart a container for a challenge.
+    """
     user = get_current_user()
     log("containers_debug", format="Requesting container reset")
 
@@ -172,6 +209,9 @@ def route_restart_container():
 @require_verified_emails
 @ratelimit(method="POST", limit=100, interval=300, key_prefix='rl_stop_container_post')
 def route_stop_container():
+    """
+    Stop a running container for a challenge.
+    """
     user = get_current_user()
     log("containers_debug", format="Requesting container stop")
 
@@ -205,7 +245,9 @@ def route_stop_container():
 @containers_bp.route('/api/kill', methods=['POST'])
 @admins_only
 def route_kill_container():
-    admin_user = get_current_user()
+    """
+    Admin route to kill a specific container.
+    """
     log("containers_debug", format="Admin requesting container kill")
 
     if request.json is None or request.json.get("container_id") is None:
@@ -219,7 +261,9 @@ def route_kill_container():
 @containers_bp.route('/api/purge', methods=['POST'])
 @admins_only
 def route_purge_containers():
-    admin_user = get_current_user()
+    """
+    Admin route to purge all containers.
+    """
     log("containers_actions", format="Requesting container purge")
 
     containers = ContainerInfoModel.query.all()
@@ -239,7 +283,9 @@ def route_purge_containers():
 @containers_bp.route('/api/images', methods=['GET'])
 @admins_only
 def route_get_images():
-    admin_user = get_current_user()
+    """
+    Admin route to get a list of available Docker images.
+    """
     log("containers_debug", format="Admin requesting Docker images list")
     try:
         images = container_manager.get_images()
@@ -250,15 +296,12 @@ def route_get_images():
                 error=str(err))
         return {"error": "An error has occurred."}, 500
 
-from CTFd.utils import get_config, set_config
-from CTFd.utils.user import get_current_user
-from flask import request, redirect, url_for, flash, current_app
-from CTFd.models import db
-
 @containers_bp.route('/api/settings/update', methods=['POST'])
 @admins_only
 def route_update_settings():
-    admin_user = get_current_user()
+    """
+    Admin route to update container settings.
+    """
     log("containers_debug", format="Admin initiating settings update")
 
     required_fields = [
@@ -314,6 +357,9 @@ def route_update_settings():
 @containers_bp.route('/dashboard', methods=['GET'])
 @admins_only
 def route_containers_dashboard():
+    """
+    Admin route to view the containers dashboard.
+    """
     admin_user = get_current_user()
     log("containers_actions", format="Admin accessing container dashboard", user_id=admin_user.id)
     try:
@@ -364,6 +410,9 @@ def route_containers_dashboard():
 @containers_bp.route('/settings', methods=['GET'])
 @admins_only
 def route_containers_settings():
+    """
+    Admin route to view and edit container settings.
+    """
     running_containers = ContainerInfoModel.query.order_by(
         ContainerInfoModel.timestamp.desc()).all()
 
