@@ -44,6 +44,12 @@ class ContainerInfoModel(db.Model):
                                 foreign_keys=[challenge_id])
 
 class ContainerSettingsModel(db.Model):
-    __mapper_args__ = {"polymorphic_identity": "container_settings"}
     key = db.Column(db.String(512), primary_key=True)
     value = db.Column(db.Text)
+
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
+
+    def __repr__(self):
+        return "<ContainerSettingsModel {0} {1}>".format(self.key, self.value)

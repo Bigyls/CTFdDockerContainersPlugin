@@ -10,8 +10,9 @@ from .routes import register_app
 from .logs import init_logs
 
 def load(app: Flask):
+    app.config['RESTX_ERROR_404_HELP'] = False
     app.db.create_all()
-    if not get_config("container_settings_model:setup"):
+    if not get_config("containers:setup"):
         setup_default_configs()
     CHALLENGE_CLASSES["container"] = ContainerChallenge
     register_plugin_assets_directory(app, base_path="/plugins/containers/assets/")
