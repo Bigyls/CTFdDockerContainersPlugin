@@ -349,7 +349,7 @@ def route_containers_dashboard():
         log("containers_debug", format="Admin retrieved Docker assignment mode: {mode}",
             user_id=admin_user.id, mode=docker_assignment)
 
-        log("containers_debug", format="Admin rendering dashboard with {running_containers} containers and ocker_assignment to {docker_assignment}",
+        log("containers_debug", format="Admin rendering dashboard with {running_containers} containers and docker_assignment to {docker_assignment}",
             user_id=admin_user.id, running_containers=len(running_containers),
             docker_assignment=docker_assignment)
 
