@@ -134,6 +134,8 @@ def create_container(container_manager, challenge_id, user_id, team_id, docker_a
             challenge_id=challenge_id,
             mode=docker_assignment)
 
+    running_containers_for_user = None
+
     if docker_assignment in ["user", "unlimited"]:
         running_containers = ContainerInfoModel.query.filter_by(
         challenge_id=challenge.id, user_id=user_id)
@@ -170,7 +172,7 @@ def create_container(container_manager, challenge_id, user_id, team_id, docker_a
     elif docker_assignment == "team":
         running_containers_for_user = ContainerInfoModel.query.filter_by(team_id=team_id)
     else:
-        running_container_for_user = None
+        running_containers_for_user = None
 
     running_container_for_user = running_containers_for_user.first() if running_containers_for_user else None
 
