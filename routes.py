@@ -291,6 +291,7 @@ def route_get_images():
         images = container_manager.get_images()
         log("containers_actions", format="Admin successfully retrieved {count} Docker images",
                 count=len(images))
+        return {"images": images}, 200
     except Exception as err:
         log("containers_errors", format="Admin encountered error while fetching Docker images ({error})",
                 error=str(err))
