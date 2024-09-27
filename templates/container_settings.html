@@ -1,5 +1,8 @@
 {% extends 'admin/base.html' %}
 {% block content %}
+
+{% set docker_assignment = get_config('containers:docker_assignment') %}
+
 <div class="jumbotron">
 	<div class="container">
 		<h1>Docker Config</h1>
@@ -25,35 +28,63 @@
 					</label>
 					<input class="form-control" type="text" name="docker_base_url" id="docker_base_url"
 						placeholder="E.g. unix://var/run/docker.sock or tcp://example.com:port"
-						value='{{ settings.docker_base_url|default("") }}' />
+						value='{{ get_config("containers:docker_base_url")|default("") }}' />
 				</div>
 				<div class="form-group">
 					<label for="docker_hostname">
 						Hostname for Docker Host (this is what's displayed to the user in the connection string)
 					</label>
 					<input class="form-control" type="text" name="docker_hostname" id="docker_hostname"
-						placeholder="e.g. example.com or 10.0.1.8" value='{{ settings.docker_hostname|default("") }}' />
+						placeholder="e.g. example.com or 10.0.1.8"
+						value='{{ get_config("containers:docker_hostname", "") }}' />
 				</div>
 				<div class="form-group">
 					<label for="container_expiration">
 						Container Expiration in Minutes (how long a container will last before it's killed; 0 = never)
 					</label>
 					<input class="form-control" type="text" name="container_expiration" id="container_expiration"
-						placeholder="e.g. 30" value='{{ settings.container_expiration|default("") }}' />
+						placeholder="e.g. 30" value='{{ get_config("containers:container_expiration")|default("") }}' />
 				</div>
 				<div class="form-group">
 					<label for="container_maxmemory">
 						Maximum per-container memory usage (in MB)
 					</label>
 					<input class="form-control" type="number" name="container_maxmemory" id="container_maxmemory"
-						placeholder="e.g. 1000" value='{{ settings.container_maxmemory|default("") }}' />
+						placeholder="e.g. 1000"
+						value='{{ get_config("containers:container_maxmemory")|default("") }}' />
 				</div>
 				<div class="form-group">
 					<label for="container_maxcpu">
 						Maximum per-container CPUs (float, e.g 1.5 means 1.5 cores at most)
 					</label>
 					<input class="form-control" type="text" name="container_maxcpu" id="container_maxcpu"
-						placeholder="e.g. 1.5" value='{{ settings.container_maxcpu|default("") }}' />
+						placeholder="e.g. 1.5" value='{{ get_config("containers:container_maxcpu")|default("") }}' />
+				</div>
+				<div class="form-group">
+					<label for="docker_assignment">
+						Docker restrictions
+					</label>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="docker_assignment" id="docker_per_team"
+							value="team" {% if docker_assignment=='team' %}checked{% endif %}>
+						<label class="form-check-label" for="docker_per_team">
+							1 Docker per team
+						</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="docker_assignment" id="docker_per_user"
+							value="user" {% if docker_assignment=='user' %}checked{% endif %}>
+						<label class="form-check-label" for="docker_per_user">
+							1 Docker per user
+						</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="docker_assignment" id="docker_unlimited"
+							value="unlimited" {% if docker_assignment=='unlimited' %}checked{% endif %}>
+						<label class="form-check-label" for="docker_unlimited">
+							Unlimited
+						</label>
+					</div>
 				</div>
 				<div class="col-md-13 text-center">
 					<button type="submit" tabindex="0" class="btn btn-md btn-success btn-outlined">
@@ -68,19 +99,17 @@
 	<h3>Instructions</h3>
 	<p>
 		The Base URL should be the local socket address of the Docker daemon, i.e.
-		<code>unix://var/run/docker.sock</code>, or it can be a remote TCP address, e.g.
+		<code>unix://var/run/docker.sock</code>, also it can be via SSH e.g. <code>ssh://user@example.com</code>, or
+		remote TCP address, e.g.
 		<code>tcp://example.com:port</code> (<a
 			href="https://docs.docker.com/config/daemon/remote-access/">https://docs.docker.com/config/daemon/remote-access/</a>).
 		In either case, sudo will not
 		be executed. For a local socket, the user
-		CTFd is running as should have permissions for Docker; for TCP connections...
+		CTFd is running as should have permissions for Docker; for SSH/TCP connections...
 	</p>
 </div>
 {% endblock content %}
 {% block scripts %}
 <script>
-
-
-
 </script>
 {% endblock scripts %}
