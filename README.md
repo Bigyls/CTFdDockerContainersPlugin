@@ -75,9 +75,9 @@ When a user clicks on a container challenge, a button labeled "Start Instance" a
 ## Roadmap
 
 - [ ] Possibility to use 2 docker TCP connection method (like 1 windows and 1 linux).
-- [x] Add logging.
-- [x] Only one docker per team.
-- [x] Make it work with Team mode.
+- [x] Add exhaustive logging.
+- [x] Add docker restrictions (one docker per team, one docker per user, unlimited).
+- [x] Make it work with User and Team mode.
 - [x] Tests with 3.7 CTFd.
 
 ## Contributing
@@ -86,4 +86,6 @@ You can create issues and PRs by yourself if you experienced a bug, have questio
 
 ## Credits
 
-Based on https://github.com/andyjsmith/CTFd-Docker-Plugin.
+Project Link: https://github.com/Bigyls/CTFdDockerContainersPlugin
+
+Based on: https://github.com/andyjsmith/CTFd-Docker-Plugin
