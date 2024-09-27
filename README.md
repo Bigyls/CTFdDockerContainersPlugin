@@ -24,7 +24,7 @@ Restart your ctfd.
 
 #### Docker Compose
 
-You will need to specify some values, including the docker connection type to use. This can either be the local Unix socket (`unix://var/run/docker.sock`), or an TCP connection (`tcp://example.com:port`). 
+You will need to specify some values, including the docker connection type to use.
 
 If you are using Docker Compose CTFd installation, you can map docker socket into CTFd container by modifying the docker-compose.yml file ([Be careful to best pratices](https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html#rule-1-do-not-expose-the-docker-daemon-socket-even-to-the-containers)):
 
@@ -55,13 +55,27 @@ docker-compose up --build
 
 To configure the plugin, go to the admin page, click the dropdown in the navbar for plugins, and go to the Containers page (https://example.com/containers/settings).
 
-![Settings page](docs/Images/image.png)
+![Settings page](docs/Images/settings.png)
 
 Other options are described on the page. After saving (`Submit` button), the plugin will try to connect to the Docker daemon and the status should show as an error message or as a green symbol on dashboard (**maybe restart ctf to be sure**).
 
-## Challenges
+## Demo
+
+### Add challenge
 
 To create challenges, use the container challenge type and configure the options. It is set up with dynamic scoring, so if you want regular scoring, set the maximum and minimum to the same value and the decay to 1.
+
+Go to https://example.com/admin/challenges/new and select container challenge type and fill all the required fields:
+
+![Create challenge](docs/Images/create_chall.png)
+
+In the docker image field, it allows you to select the docker image already builded on the machine:
+
+![Docker images](docs/Images/docker_images.png)
+
+If you need to specify advanced options like the volumes, read the [Docker SDK for Python documentation](https://docker-py.readthedocs.io/en/stable/containers.html) for the syntax, since most options are passed directly to the SDK.
+
+#### Auto deployment
 
 It's also possible to configure auto deployment using [ctfcli](https://github.com/CTFd/ctfcli) and its YAML configuration:
 
@@ -81,11 +95,30 @@ connection_info: https://container.example.com
 ...
 ```
 
-If you need to specify advanced options like the volumes, read the [Docker SDK for Python documentation](https://docker-py.readthedocs.io/en/stable/containers.html) for the syntax, since most options are passed directly to the SDK.
+### Admin view
+
+Admin can manage created containers at https://example.com/containers/dashboard.
+
+![Dashboard](docs/Images/dashboard.png)
+
+### User view
 
 When a user clicks on a challenge with container, a button labeled "Start Instance" appears. Clicking it shows the information below with a random port assignment.
 
-![Challenge dialog](docs/Images/dialog.png)
+Web             |  TCP
+:-------------------------:|:-------------------------:
+![WEB](docs/Images/web.png) |  ![TCP](docs/Images/tcp.png)
+
+All connections types are supported (HTTP, HTTPS, TCP, UDP, OPCUA, MQTT, ZeroMQ, ...).
+
+### Logs
+
+The plugin logs all actions in the CTFd logs folder (`CTFd/CTFd/logs`) into the `containers.log` file.
+
+There is 3 levels of logging: 
+- INFO : User actions
+- DEBUG : Help for diagnostics
+- ERROR : What more can I say
 
 ## Roadmap
 
