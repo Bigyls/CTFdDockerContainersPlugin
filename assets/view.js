@@ -1,11 +1,11 @@
+// Initialize challenge data and renderer
 CTFd._internal.challenge.data = undefined;
-
 CTFd._internal.challenge.renderer = null;
-CTFd._internal.challenge.preRender = function () {};
+CTFd._internal.challenge.preRender = function () { };
+CTFd._internal.challenge.render = null;
+CTFd._internal.challenge.postRender = function () { };
 
-CTFd._internal.challenge.render = null
-CTFd._internal.challenge.postRender = function () {};
-
+// Function to handle submission of challenge attempts
 CTFd._internal.challenge.submit = function (preview) {
 	var challenge_id = parseInt(CTFd.lib.$("#challenge-id").val());
 	var submission = CTFd.lib.$("#challenge-input").val();
@@ -22,65 +22,65 @@ CTFd._internal.challenge.submit = function (preview) {
 	return CTFd.api
 		.post_challenge_attempt(params, body)
 		.then(function (response) {
+			// Handle different response statuses
 			if (response.status === 429) {
-				// User was ratelimited but process response
-				return response;
+				return response; // Rate limit reached
 			}
 			if (response.status === 403) {
-				// User is not logged in or CTF is paused.
-				return response;
+				return response; // User not logged in or CTF paused
 			}
-			return response;
+			return response; // Success or other statuses
 		});
 };
 
+// Function to merge query parameters
 function mergeQueryParams(parameters, queryParameters) {
 	if (parameters.$queryParameters) {
-		Object.keys(parameters.$queryParameters).forEach(function (
-			parameterName
-		) {
+		Object.keys(parameters.$queryParameters).forEach(function (parameterName) {
 			var parameter = parameters.$queryParameters[parameterName];
-			queryParameters[parameterName] = parameter;
+			queryParameters[parameterName] = parameter; // Merge query parameters
 		});
 	}
-
 	return queryParameters;
 }
 
+// Function to check if the container is already running
 function container_running(challenge_id) {
 	var path = "/containers/api/running";
 	var requestButton = document.getElementById("container-request-btn");
 	var requestError = document.getElementById("container-request-error");
+
 	var xhr = new XMLHttpRequest();
 	xhr.open("POST", path, true);
 	xhr.setRequestHeader("Content-Type", "application/json");
 	xhr.setRequestHeader("Accept", "application/json");
 	xhr.setRequestHeader("CSRF-Token", init.csrfNonce);
 	xhr.send(JSON.stringify({ chal_id: challenge_id }));
+
 	xhr.onload = function () {
 		var data = JSON.parse(this.responseText);
 		if (data.error !== undefined) {
-			// Container error
+			// Container error handling
 			requestError.style.display = "";
 			requestError.firstElementChild.innerHTML = data.error;
 			requestButton.removeAttribute("disabled");
 		} else if (data.message !== undefined) {
-			// CTFd error
+			// CTFd error handling
 			requestError.style.display = "";
 			requestError.firstElementChild.innerHTML = data.message;
 			requestButton.removeAttribute("disabled");
 		} else if (data && data.status === "already_running" && data.container_id == challenge_id) {
-			// Success
+			// If the container is already running
 			console.log(challenge_id);
-			container_request(challenge_id);
-		}
-		else{
-			// Pass
+			container_request(challenge_id); // Request to run the container
+		} else {
+			// Other cases, if needed
 		}
 		console.log(data);
 	};
 }
 
+// Function to request a new container instance
 function container_request(challenge_id) {
 	var path = "/containers/api/request";
 	var requestButton = document.getElementById("container-request-btn");
@@ -98,20 +98,21 @@ function container_request(challenge_id) {
 	xhr.setRequestHeader("Accept", "application/json");
 	xhr.setRequestHeader("CSRF-Token", init.csrfNonce);
 	xhr.send(JSON.stringify({ chal_id: challenge_id }));
+
 	xhr.onload = function () {
 		var data = JSON.parse(this.responseText);
 		if (data.error !== undefined) {
-			// Container error
+			// Handle container error
 			requestError.style.display = "";
 			requestError.firstElementChild.innerHTML = data.error;
 			requestButton.removeAttribute("disabled");
 		} else if (data.message !== undefined) {
-			// CTFd error
+			// Handle CTFd error
 			requestError.style.display = "";
 			requestError.firstElementChild.innerHTML = data.message;
 			requestButton.removeAttribute("disabled");
 		} else {
-			// Success
+			// Success case
 			requestError.style.display = "none";
 			requestError.firstElementChild.innerHTML = "";
 			requestButton.parentNode.removeChild(requestButton);
@@ -120,9 +121,7 @@ function container_request(challenge_id) {
 			} else {
 				connectionInfo.innerHTML = data.hostname + ' ' + data.port;
 			}
-			containerExpires.innerHTML = Math.ceil(
-				(new Date(data.expires * 1000) - new Date()) / 1000 / 60
-			);
+			containerExpires.innerHTML = Math.ceil((new Date(data.expires * 1000) - new Date()) / 1000 / 60);
 			containerExpiresTime.style.display = "";
 			requestResult.style.display = "";
 		}
@@ -130,11 +129,11 @@ function container_request(challenge_id) {
 	};
 }
 
+// Function to reset the container
 function container_reset(challenge_id) {
 	var path = "/containers/api/reset";
 	var resetButton = document.getElementById("container-reset-btn");
 	var requestResult = document.getElementById("container-request-result");
-	var containerExpires = document.getElementById("container-expires");
 	var connectionInfo = document.getElementById("container-connection-info");
 	var requestError = document.getElementById("container-request-error");
 
@@ -146,25 +145,24 @@ function container_reset(challenge_id) {
 	xhr.setRequestHeader("Accept", "application/json");
 	xhr.setRequestHeader("CSRF-Token", init.csrfNonce);
 	xhr.send(JSON.stringify({ chal_id: challenge_id }));
+
 	xhr.onload = function () {
 		var data = JSON.parse(this.responseText);
 		if (data.error !== undefined) {
-			// Container rrror
+			// Handle container error
 			requestError.style.display = "";
 			requestError.firstElementChild.innerHTML = data.error;
 			resetButton.removeAttribute("disabled");
 		} else if (data.message !== undefined) {
-			// CTFd error
+			// Handle CTFd error
 			requestError.style.display = "";
 			requestError.firstElementChild.innerHTML = data.message;
 			resetButton.removeAttribute("disabled");
 		} else {
-			// Success
+			// Success case
 			requestError.style.display = "none";
 			connectionInfo.innerHTML = data.hostname + ":" + data.port;
-			containerExpires.innerHTML = Math.ceil(
-				(new Date(data.expires * 1000) - new Date()) / 1000 / 60
-			);
+			containerExpires.innerHTML = Math.ceil((new Date(data.expires * 1000) - new Date()) / 1000 / 60);
 			requestResult.style.display = "";
 			resetButton.removeAttribute("disabled");
 		}
@@ -172,6 +170,7 @@ function container_reset(challenge_id) {
 	};
 }
 
+// Function to renew the container instance
 function container_renew(challenge_id) {
 	var path = "/containers/api/renew";
 	var renewButton = document.getElementById("container-renew-btn");
@@ -187,31 +186,31 @@ function container_renew(challenge_id) {
 	xhr.setRequestHeader("Accept", "application/json");
 	xhr.setRequestHeader("CSRF-Token", init.csrfNonce);
 	xhr.send(JSON.stringify({ chal_id: challenge_id }));
+
 	xhr.onload = function () {
 		var data = JSON.parse(this.responseText);
 		if (data.error !== undefined) {
-			// Container rrror
+			// Handle container error
 			requestError.style.display = "";
 			requestError.firstElementChild.innerHTML = data.error;
 			renewButton.removeAttribute("disabled");
 		} else if (data.message !== undefined) {
-			// CTFd error
+			// Handle CTFd error
 			requestError.style.display = "";
 			requestError.firstElementChild.innerHTML = data.message;
 			renewButton.removeAttribute("disabled");
 		} else {
-			// Success
+			// Success case
 			requestError.style.display = "none";
 			requestResult.style.display = "";
-			containerExpires.innerHTML = Math.ceil(
-				(new Date(data.expires * 1000) - new Date()) / 1000 / 60
-			);
+			containerExpires.innerHTML = Math.ceil((new Date(data.expires * 1000) - new Date()) / 1000 / 60);
 			renewButton.removeAttribute("disabled");
 		}
 		console.log(data);
 	};
 }
 
+// Function to stop the container instance
 function container_stop(challenge_id) {
 	var path = "/containers/api/stop";
 	var stopButton = document.getElementById("container-stop-btn");
@@ -219,6 +218,7 @@ function container_stop(challenge_id) {
 	var connectionInfo = document.getElementById("container-connection-info");
 	var requestError = document.getElementById("container-request-error");
 	var containerExpiresTime = document.getElementById("container-expires-time");
+
 	stopButton.setAttribute("disabled", "disabled");
 
 	var xhr = new XMLHttpRequest();
@@ -227,23 +227,24 @@ function container_stop(challenge_id) {
 	xhr.setRequestHeader("Accept", "application/json");
 	xhr.setRequestHeader("CSRF-Token", init.csrfNonce);
 	xhr.send(JSON.stringify({ chal_id: challenge_id }));
+
 	xhr.onload = function () {
 		var data = JSON.parse(this.responseText);
 		if (data.error !== undefined) {
-			// Container rrror
+			// Handle container error
 			requestError.style.display = "";
 			requestError.firstElementChild.innerHTML = data.error;
 			stopButton.removeAttribute("disabled");
 		} else if (data.message !== undefined) {
-			// CTFd error
+			// Handle CTFd error
 			requestError.style.display = "";
 			requestError.firstElementChild.innerHTML = data.message;
 			stopButton.removeAttribute("disabled");
 		} else {
-			// Success
+			// Success case
 			requestError.style.display = "none";
 			requestResult.innerHTML = "Container stopped. <br>Reopen this challenge to start another.";
-			containerExpiresTime.style.display = "none"
+			containerExpiresTime.style.display = "none"; // Hide expiration time
 		}
 		console.log(data);
 	};
