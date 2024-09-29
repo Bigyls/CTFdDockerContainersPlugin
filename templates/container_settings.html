@@ -1,7 +1,7 @@
 {% extends 'admin/base.html' %}
 {% block content %}
 
-{% set docker_assignment = get_config('containers:docker_assignment') %}
+{% set docker_assignment = settings.get('docker_assignment') %}
 
 <div class="jumbotron">
 	<div class="container">
@@ -28,37 +28,35 @@
 					</label>
 					<input class="form-control" type="text" name="docker_base_url" id="docker_base_url"
 						placeholder="E.g. unix://var/run/docker.sock or tcp://example.com:port"
-						value='{{ get_config("containers:docker_base_url")|default("") }}' />
+						value='{{ settings.docker_base_url|default("") }}' />
 				</div>
 				<div class="form-group">
 					<label for="docker_hostname">
 						Hostname for Docker Host (this is what's displayed to the user in the connection string)
 					</label>
 					<input class="form-control" type="text" name="docker_hostname" id="docker_hostname"
-						placeholder="e.g. example.com or 10.0.1.8"
-						value='{{ get_config("containers:docker_hostname", "") }}' />
+						placeholder="e.g. example.com or 10.0.1.8" value='{{ settings.docker_hostname|default("") }}' />
 				</div>
 				<div class="form-group">
 					<label for="container_expiration">
 						Container Expiration in Minutes (how long a container will last before it's killed; 0 = never)
 					</label>
 					<input class="form-control" type="text" name="container_expiration" id="container_expiration"
-						placeholder="e.g. 30" value='{{ get_config("containers:container_expiration")|default("") }}' />
+						placeholder="e.g. 30" value='{{ settings.container_expiration|default("") }}' />
 				</div>
 				<div class="form-group">
 					<label for="container_maxmemory">
 						Maximum per-container memory usage (in MB)
 					</label>
 					<input class="form-control" type="number" name="container_maxmemory" id="container_maxmemory"
-						placeholder="e.g. 1000"
-						value='{{ get_config("containers:container_maxmemory")|default("") }}' />
+						placeholder="e.g. 1000" value='{{ settings.container_maxmemory|default("") }}' />
 				</div>
 				<div class="form-group">
 					<label for="container_maxcpu">
 						Maximum per-container CPUs (float, e.g 1.5 means 1.5 cores at most)
 					</label>
 					<input class="form-control" type="text" name="container_maxcpu" id="container_maxcpu"
-						placeholder="e.g. 1.5" value='{{ get_config("containers:container_maxcpu")|default("") }}' />
+						placeholder="e.g. 1.5" value='{{ settings.container_maxcpu|default("") }}' />
 				</div>
 				<div class="form-group">
 					<label for="docker_assignment">

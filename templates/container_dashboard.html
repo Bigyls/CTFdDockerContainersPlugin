@@ -63,10 +63,9 @@
 				<td>{{ c.challenge.image }}</td>
 				<td>{{ c.challenge.name }} [{{ c.challenge_id }}]</td>
 				<td>
-					{% set docker_assignment = get_config('containers:docker_assignment', '') %}
-					{% if docker_assignment == 'team' %}
+					{% if settings.docker_assignment == 'team' %}
 					Team: {{ c.team.name }} [{{ c.team_id }}]
-					{% elif docker_assignment == 'user' %}
+					{% elif settings.docker_assignment == 'user' %}
 					User: {{ c.user.name }} [{{ c.user_id }}]
 					{% else %}
 					User: {{ c.user.name }} [{{ c.user_id }}]
