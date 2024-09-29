@@ -22,7 +22,7 @@
 <div class="form-group">
 	<label for="value">Decay Limit<br>
 		<small class="form-text text-muted">
-			The amount of solves before the challenge reaches its minimum value
+			The amount of solves before the challenge reaches its minimum value.
 		</small>
 	</label>
 	<input type="number" class="form-control chal-decay" name="decay" value="{{ challenge.decay }}" required>
@@ -31,7 +31,7 @@
 <div class="form-group">
 	<label for="value">Minimum Value<br>
 		<small class="form-text text-muted">
-			This is the lowest that the challenge can be worth
+			This is the lowest that the challenge can be worth.
 		</small>
 	</label>
 	<input type="number" class="form-control chal-minimum" name="minimum" value="{{ challenge.minimum }}" required>
@@ -39,12 +39,13 @@
 
 <div class="form-group">
 	<script>
+		// JavaScript variable holding the currently selected container image from the challenge
 		var container_image_selected = "{{ challenge.image }}";
 	</script>
 	<label>
 		Image<br>
 		<small class="form-text text-muted">
-			Name of the Docker image to spin up
+			Name of the Docker image to spin up.
 		</small>
 	</label>
 	<select type="text" class="form-control" name="image" placeholder="Enter image" id="container-image"
@@ -57,7 +58,7 @@
 	<label>
 		Port<br>
 		<small class="form-text text-muted">
-			Internal container port that should be exposed (external port will be automatically assigned)
+			Internal container port that should be exposed (external port will be automatically assigned).
 		</small>
 	</label>
 	<input type="number" class="form-control" name="port" value="{{ challenge.port }}" required>
@@ -67,7 +68,7 @@
 	<label>
 		Command<br>
 		<small class="form-text text-muted">
-			Command to run in the Docker container
+			Command to run in the Docker container.
 		</small>
 	</label>
 	<input type="text" class="form-control" name="command" value="{{ challenge.command }}">

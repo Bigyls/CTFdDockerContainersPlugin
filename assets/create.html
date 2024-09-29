@@ -3,6 +3,7 @@
 {% block header %}
 <div class="alert alert-secondary" role="alert">
 	Container challenges dynamically spin up a Docker container for each team to run the challenge on.
+	<!-- Information about the challenge type -->
 </div>
 {% endblock %}
 
@@ -10,41 +11,46 @@
 <div class="form-group">
 	<label for="value">Initial Value<br>
 		<small class="form-text text-muted">
-			This is how many points the challenge is worth initially.
+			This is how many points the challenge is worth initially. <!-- Description of the initial value field -->
 		</small>
 	</label>
 	<input type="number" class="form-control" name="initial" placeholder="Enter value" required>
-
+	<!-- Input for initial challenge value -->
 </div>
 
 <div class="form-group">
 	<label for="value">Decay Limit<br>
 		<small class="form-text text-muted">
 			The amount of solves before the challenge reaches its minimum value
+			<!-- Description of the decay limit field -->
 		</small>
 	</label>
 	<input type="number" class="form-control" name="decay" placeholder="Enter decay limit" required>
+	<!-- Input for decay limit -->
 </div>
 
 <div class="form-group">
 	<label for="value">Minimum Value<br>
 		<small class="form-text text-muted">
-			This is the lowest that the challenge can be worth
+			This is the lowest that the challenge can be worth <!-- Description of the minimum value field -->
 		</small>
 	</label>
 	<input type="number" class="form-control" name="minimum" placeholder="Enter minimum value" required>
+	<!-- Input for minimum value -->
 </div>
 
 <div class="form-group">
 	<label>
 		Image<br>
 		<small class="form-text text-muted">
-			Name of the Docker image to spin up
+			Name of the Docker image to spin up <!-- Description of the Docker image selection -->
 		</small>
 	</label>
 	<select type="text" class="form-control" name="image" placeholder="Enter image" id="container-image"
 		title="Name of the Docker image to spin up" required disabled>
+		<!-- Dropdown for Docker image selection, initially disabled -->
 		<option value="" id="container-image-default" disabled selected>Loading...</option>
+		<!-- Placeholder option while loading images -->
 	</select>
 </div>
 
@@ -53,33 +59,38 @@
 		Port<br>
 		<small class="form-text text-muted">
 			Internal container port that should be exposed (external port will be automatically assigned)
+			<!-- Description of the port field -->
 		</small>
 	</label>
 	<input type="number" class="form-control" name="port" placeholder="Enter port" required>
+	<!-- Input for container port -->
 </div>
 
 <div class="form-group">
 	<label>
 		Command<br>
 		<small class="form-text text-muted">
-			Command to run in the Docker container
+			Command to run in the Docker container <!-- Description of the command field -->
 		</small>
 	</label>
 	<input type="text" class="form-control" name="command" placeholder="Enter command or leave blank">
+	<!-- Input for command -->
 </div>
 
 <div class="form-group">
 	<label>
 		Volumes<br>
 		<small class="form-text text-muted">
-			Custom volumes to mount, in JSON. E.g.
+			Custom volumes to mount, in JSON. E.g. <!-- Description of the volumes field -->
 			<pre>{"/home/user1/": {"bind": "/mnt/vol2", "mode": "rw"}, "/var/www": {"bind": "/mnt/vol1", "mode": "ro"}}</pre>
 		</small>
 	</label>
 	<input type="text" class="form-control" name="volumes" placeholder="Enter volumes or leave blank">
+	<!-- Input for mounting custom volumes -->
 </div>
 {% endblock %}
 
 {% block type %}
 <input type="hidden" value="container" name="type" id="chaltype">
+<!-- Hidden input to specify the challenge type as 'container' -->
 {% endblock %}

@@ -19,16 +19,16 @@ class ContainerChallengeModel(Challenges):
     __mapper_args__ = {"polymorphic_identity": "container"}
     id = db.Column(
         db.Integer, db.ForeignKey("challenges.id", ondelete="CASCADE"), primary_key=True
-    )
-    image = db.Column(db.Text)
-    port = db.Column(db.Integer)
-    command = db.Column(db.Text, default="")
-    volumes = db.Column(db.Text, default="")
+    )  # Unique identifier for each container challenge.
+    image = db.Column(db.Text)  # Docker image used for the container challenge.
+    port = db.Column(db.Integer)  # Port number the container listens on.
+    command = db.Column(db.Text, default="")  # Command to run inside the container.
+    volumes = db.Column(db.Text, default="")  # Volume mappings for the container.
 
     # Dynamic challenge properties
-    initial = db.Column(db.Integer, default=0)
-    minimum = db.Column(db.Integer, default=0)
-    decay = db.Column(db.Integer, default=0)
+    initial = db.Column(db.Integer, default=0)  # Initial point value for the challenge.
+    minimum = db.Column(db.Integer, default=0)  # Minimum point value after decay.
+    decay = db.Column(db.Integer, default=0)  # Rate of point decay over time.
 
     def __init__(self, *args, **kwargs):
         """
@@ -39,7 +39,7 @@ class ContainerChallengeModel(Challenges):
             **kwargs: Arbitrary keyword arguments.
         """
         super(ContainerChallengeModel, self).__init__(**kwargs)
-        self.value = kwargs["initial"]
+        self.value = kwargs["initial"]  # Set the initial point value from the given arguments.
 
 class ContainerInfoModel(db.Model):
     """
@@ -49,19 +49,21 @@ class ContainerInfoModel(db.Model):
     including which user or team the container belongs to.
     """
     __mapper_args__ = {"polymorphic_identity": "container_info"}
-    container_id = db.Column(db.String(512), primary_key=True)
+    container_id = db.Column(db.String(512), primary_key=True)  # Unique container ID.
     challenge_id = db.Column(
         db.Integer, db.ForeignKey("challenges.id", ondelete="CASCADE")
-    )
+    )  # Associated challenge ID for the container.
     user_id = db.Column(
         db.Integer, db.ForeignKey("users.id", ondelete="CASCADE")
-    )
+    )  # ID of the user who owns the container.
     team_id = db.Column(
         db.Integer, db.ForeignKey("teams.id", ondelete="CASCADE")
-    )
-    port = db.Column(db.Integer)
-    timestamp = db.Column(db.Integer)
-    expires = db.Column(db.Integer)
+    )  # ID of the team who owns the container.
+    port = db.Column(db.Integer)  # Port number for the container instance.
+    timestamp = db.Column(db.Integer)  # Creation timestamp of the container.
+    expires = db.Column(db.Integer)  # Expiration timestamp for the container.
+
+    # Relationships to link container to user, team, and challenge.
     user = db.relationship("Users", foreign_keys=[user_id])
     team = db.relationship("Teams", foreign_keys=[team_id])
     challenge = db.relationship(ContainerChallengeModel,
@@ -74,25 +76,18 @@ class ContainerSettingsModel(db.Model):
     This model stores key-value pairs for various settings related to
     container management in the CTFd platform.
     """
-    key = db.Column(db.String(512), primary_key=True)
-    value = db.Column(db.Text)
+    key = db.Column(db.String(512), primary_key=True)  # Setting key.
+    value = db.Column(db.Text)  # Setting value.
 
-    def __init__(self, key, value):
+    @classmethod
+    def apply_default_config(cls, key, value):
         """
-        Initialize a new ContainerSettingsModel instance.
+        Set the default configuration for a container setting.
 
         Args:
             key (str): The setting key.
             value (str): The setting value.
         """
-        self.key = key
-        self.value = value
-
-    def __repr__(self):
-        """
-        Return a string representation of the ContainerSettingsModel instance.
-
-        Returns:
-            str: A string representation of the model instance.
-        """
-        return "<ContainerSettingsModel {0} {1}>".format(self.key, self.value)
+        # If the setting is not already in the database, add it as a new entry.
+        if not cls.query.filter_by(key=key).first():
+            db.session.add(cls(key=key, value=value))

@@ -1,47 +1,51 @@
 {% extends "admin/base.html" %}
 
-
 {% block content %}
 
 <style>
 	.containers-kill-btn {
 		padding: 5px;
-		line-height: 0
+		/* Padding for the kill button */
+		line-height: 0;
+		/* Adjusts line height for button alignment */
 	}
 
 	.containers-container {
 		max-width: none;
+		/* Remove width restrictions for the container */
 	}
 </style>
 
 <div class="jumbotron">
 	<div class="container">
-		<h1>Containers</h1>
+		<h1>Containers</h1> <!-- Title for the Containers section -->
 	</div>
 </div>
 <div class="container containers-container">
 	{% with messages = get_flashed_messages() %}
 	{% if messages %}
 	{% for message in messages %}
-	<div class="alert alert-danger" role="alert">
+	<div class="alert alert-danger" role="alert"> <!-- Alert for displaying flash messages -->
 		{{ message }}
 	</div>
 	{% endfor %}
 	{% endif %}
 	{% endwith %}
+
 	<button class="btn btn-success" onclick="window.location.reload()"><i class="fas fa-sync"></i></button>
+	<!-- Refresh button -->
 	<button class="btn btn-danger" id="container-purge-btn" onclick="purgeContainers()" style="float:right">Purge All
-		Containers</button>
+		Containers</button> <!-- Button to purge all containers -->
 	<a class="btn btn-primary" href="{{ url_for('.route_containers_settings') }}"
-		style="float:right;margin-right:10px">Settings</a>
+		style="float:right;margin-right:10px">Settings</a> <!-- Button to navigate to settings -->
 
 	{% if connected %}
-	<span class="badge badge-success">Docker Connected</span>
+	<span class="badge badge-success">Docker Connected</span> <!-- Badge indicating Docker connection status -->
 	{% else %}
 	<span class="badge badge-danger">Docker Not Connected</span>
 	{% endif %}
 
-	<table class="table">
+	<table class="table"> <!-- Table displaying containers -->
 		<thead>
 			<tr>
 				<td><strong>Container ID</strong></td>
@@ -60,28 +64,29 @@
 			{% for c in containers %}
 			<tr>
 				<td class="container_item" id="{{ c.container_id }}">{{ c.container_id[:12] }}</td>
-				<td>{{ c.challenge.image }}</td>
-				<td>{{ c.challenge.name }} [{{ c.challenge_id }}]</td>
+				<!-- Display truncated container ID -->
+				<td>{{ c.challenge.image }}</td> <!-- Display associated image -->
+				<td>{{ c.challenge.name }} [{{ c.challenge_id }}]</td> <!-- Display challenge name and ID -->
 				<td>
-					{% set docker_assignment = get_config('containers:docker_assignment', '') %}
-					{% if docker_assignment == 'team' %}
-					Team: {{ c.team.name }} [{{ c.team_id }}]
-					{% elif docker_assignment == 'user' %}
-					User: {{ c.user.name }} [{{ c.user_id }}]
+					{% if settings.docker_assignment == 'team' %}
+					Team: {{ c.team.name }} [{{ c.team_id }}] <!-- Display team name and ID if team assignment -->
+					{% elif settings.docker_assignment == 'user' %}
+					User: {{ c.user.name }} [{{ c.user_id }}] <!-- Display user name and ID if user assignment -->
 					{% else %}
-					User: {{ c.user.name }} [{{ c.user_id }}]
+					User: {{ c.user.name }} [{{ c.user_id }}] <!-- Default case for user assignment -->
 					{% endif %}
 				</td>
-				<td>{{ c.port }}</td>
-				<td>{{ c.timestamp|format_time }}</td>
-				<td>{{ c.expires|format_time }}</td>
+				<td>{{ c.port }}</td> <!-- Display assigned port -->
+				<td>{{ c.timestamp|format_time }}</td> <!-- Display creation timestamp -->
+				<td>{{ c.expires|format_time }}</td> <!-- Display expiration timestamp -->
 				{% if c.is_running %}
-				<td><span class="badge badge-success">Yes</span></td>
+				<td><span class="badge badge-success">Yes</span></td> <!-- Display running status -->
 				{% else %}
 				<td><span class="badge badge-danger">No</span></td>
 				{% endif %}
 				<td><button class="btn btn-danger containers-kill-btn"
 						onclick="killContainer('{{ c.container_id }}')"><i class="fa fa-times"></i></button></td>
+				<!-- Button to kill container -->
 			</tr>
 			{% endfor %}
 			{% endif %}
@@ -93,50 +98,49 @@
 
 {% block scripts %}
 <script>
-
 	function purgeContainers() {
-		var path = "/containers/api/purge";
-		var purgeButton = document.getElementById("container-purge-btn");
+		var path = "/containers/api/purge";  // API endpoint to purge containers
+		var purgeButton = document.getElementById("container-purge-btn");  // Get the purge button
 
-		purgeButton.setAttribute("disabled", "disabled");
+		purgeButton.setAttribute("disabled", "disabled");  // Disable the purge button during the operation
 
 		var xhr = new XMLHttpRequest();
-		xhr.open("POST", path, true);
+		xhr.open("POST", path, true);  // Open a POST request to the purge API
 		xhr.setRequestHeader("Content-Type", "application/json");
 		xhr.setRequestHeader("Accept", "application/json");
-		xhr.setRequestHeader("CSRF-Token", init.csrfNonce);
-		xhr.send();
+		xhr.setRequestHeader("CSRF-Token", init.csrfNonce);  // Set CSRF token for security
+		xhr.send();  // Send the request
+
 		xhr.onload = function () {
-			var data = JSON.parse(this.responseText);
+			var data = JSON.parse(this.responseText);  // Parse the JSON response
 			if (data.success == undefined) {
-				purgeButton.removeAttribute("disabled");
+				purgeButton.removeAttribute("disabled");  // Re-enable the purge button if no success field
 			} else {
-				window.location.reload();
+				window.location.reload();  // Reload the page on success
 			}
-			console.log(data);
+			console.log(data);  // Log the response data
 		};
 	}
 
 	function killContainer(container_id) {
-		var path = "/containers/api/kill";
+		var path = "/containers/api/kill";  // API endpoint to kill a specific container
 
 		var xhr = new XMLHttpRequest();
-		xhr.open("POST", path, true);
+		xhr.open("POST", path, true);  // Open a POST request to the kill API
 		xhr.setRequestHeader("Content-Type", "application/json");
 		xhr.setRequestHeader("Accept", "application/json");
-		xhr.setRequestHeader("CSRF-Token", init.csrfNonce);
-		xhr.send(JSON.stringify({ container_id: container_id }));
+		xhr.setRequestHeader("CSRF-Token", init.csrfNonce);  // Set CSRF token for security
+		xhr.send(JSON.stringify({ container_id: container_id }));  // Send the container ID in the request body
+
 		xhr.onload = function () {
-			var data = JSON.parse(this.responseText);
+			var data = JSON.parse(this.responseText);  // Parse the JSON response
 			if (data.success == undefined) {
-				purgeButton.removeAttribute("disabled");
+				purgeButton.removeAttribute("disabled");  // Re-enable the purge button if no success field
 			} else {
-				window.location.reload();
+				window.location.reload();  // Reload the page on success
 			}
-			console.log(data);
+			console.log(data);  // Log the response data
 		};
 	}
-
-
 </script>
 {% endblock %}
