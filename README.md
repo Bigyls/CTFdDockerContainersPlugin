@@ -120,6 +120,10 @@ There is 3 levels of logging:
 - DEBUG : Help for diagnostics
 - ERROR : What more can I say
 
+### Rate limits
+
+If the CTF is a physical event, be careful about limits at API endpoints. Feel free to change values or remove them by commenting them.
+
 ## Roadmap
 - [ ] Write tests.
 - [ ] Possibility to use 2 docker TCP connection method (like 1 windows and 1 linux).
