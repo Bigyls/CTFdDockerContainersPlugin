@@ -4,7 +4,7 @@ It handles container management operations such as running, requesting, renewing
 resetting, stopping, and purging containers, as well as administrative functions
 like updating settings and viewing the container dashboard.
 """
-
+import time
 import datetime
 
 from flask import Blueprint, request, Flask, render_template, url_for, redirect, flash, current_app
@@ -12,7 +12,6 @@ from flask import Blueprint, request, Flask, render_template, url_for, redirect,
 from CTFd.models import db
 from CTFd.utils.decorators import authed_only, admins_only, during_ctf_time_only, ratelimit, require_verified_emails
 from CTFd.utils.user import get_current_user
-from CTFd.utils import get_config, set_config
 
 from .logs import log
 from .models import ContainerInfoModel, ContainerSettingsModel
@@ -325,34 +324,47 @@ def route_update_settings():
         "docker_assignment": request.form.get("docker_assignment")
     }
 
-    for key, value in settings.items():
-            config_key = f"containers:{key}"
-            old_value = get_config(config_key)
-            set_config(config_key, value)
-            log("containers_actions", format="Admin updated setting {key}: {old_value} -> {new_value}",
-                    key=key,
-                    old_value=old_value,
-                    new_value=value)
+    try:
+        for key, value in settings.items():
+            setting = ContainerSettingsModel.query.filter_by(key=key).first()
+            if setting is None:
+                # Create
+                new_setting = ContainerSettingsModel(key=key, value=value)
+                db.session.add(new_setting)
+                log("containers_actions", format=f"Admin created '{key}' setting DB row")
+            else:
+                # Update
+                old_value = setting.value
+                if old_value != value:
+                    setting.value = value
+                    log("containers_actions", format="Admin updated '{key}' setting DB row ({old_value} => {new_value})",
+                            key=key,
+                            old_value=old_value,
+                            new_value=value)
+    except Exception as err:
+        log("containers_errors", format="Admin encountered error while updating settings ({error})",
+                error=str(err))
+        return {"error": "An error has occurred."}, 500
 
-    db.session.commit()
-    log("containers_actions", format="Admin committed settings changes to database")
+    try:
+        db.session.commit()
+        log("containers_actions", format="Admin successfully committed settings to database")
+    except Exception as err:
+        db.session.rollback()
+        log("containers_errors", format="Admin encountered error while committing settings ({error})",
+                error=str(err))
+        return {"error": "Failed to update settings in database"}, 500
 
-    # Update container_manager settings
-    container_manager.settings = {
-        key: get_config(f"containers:{key}") for key in settings.keys()
-    }
-    log("containers_debug", format="Admin updated container_manager settings")
-
-    if container_manager.settings.get("docker_base_url") is not None:
-        try:
-            container_manager.initialize_connection(container_manager.settings, current_app)
-            log("containers_actions", format="Admin successfully initialized connection to Docker daemon")
-        except Exception as err:
-            log("containers_errors", format="Admin failed to initialize Docker connection ({error})",
-                    error=str(err))
-            flash(str(err), "error")
-            return redirect(url_for(".route_containers_settings"))
-
+    try:
+        all_settings = ContainerSettingsModel.query.all()
+        new_settings = settings_to_dict(all_settings)
+        container_manager.settings = new_settings
+        log("containers_actions", format="Admin completed settings update. New settings: {settings}",
+                settings=container_manager.settings)
+    except Exception as err:
+        log("containers_errors", format="Admin encountered error while updating container_manager settings ({error})",
+                error=str(err))
+        return {"error": "Failed to update container manager settings"}, 500
     return redirect(url_for(".route_containers_dashboard"))
 
 @containers_bp.route('/dashboard', methods=['GET'])
@@ -390,7 +402,7 @@ def route_containers_dashboard():
                     user_id=admin_user.id, container_id=container.container_id, error=str(err))
                 running_containers[i].is_running = False
 
-        docker_assignment = container_manager.settings.get("docker_assignment", "Unknown")
+        docker_assignment = container_manager.settings.get("docker_assignment")
         log("containers_debug", format="Admin retrieved Docker assignment mode: {mode}",
             user_id=admin_user.id, mode=docker_assignment)
 
@@ -398,9 +410,9 @@ def route_containers_dashboard():
             user_id=admin_user.id, running_containers=len(running_containers),
             docker_assignment=docker_assignment)
 
-        return render_template('container_dashboard.html', 
-                               containers=running_containers, 
-                               connected=connected, 
+        return render_template('container_dashboard.html',
+                               containers=running_containers,
+                               connected=connected,
                                settings={'docker_assignment': docker_assignment})
     except Exception as err:
         log("containers_errors", format="Admin encountered error rendering container dashboard: {error}",
@@ -416,6 +428,6 @@ def route_containers_settings():
     """
     running_containers = ContainerInfoModel.query.order_by(
         ContainerInfoModel.timestamp.desc()).all()
-
+    settings = settings_to_dict(ContainerSettingsModel.query.all())
     log("containers_actions", format="Admin Container settings called")
-    return render_template('container_settings.html', settings=container_manager.settings)
+    return render_template('container_settings.html', settings=settings)
