@@ -77,22 +77,14 @@ class ContainerSettingsModel(db.Model):
     key = db.Column(db.String(512), primary_key=True)
     value = db.Column(db.Text)
 
-    def __init__(self, key, value):
+    @classmethod
+    def apply_default_config(cls, key, value):
         """
-        Initialize a new ContainerSettingsModel instance.
+        Set the default configuration for a container setting.
 
         Args:
             key (str): The setting key.
             value (str): The setting value.
         """
-        self.key = key
-        self.value = value
-
-    def __repr__(self):
-        """
-        Return a string representation of the ContainerSettingsModel instance.
-
-        Returns:
-            str: A string representation of the model instance.
-        """
-        return "<ContainerSettingsModel {0} {1}>".format(self.key, self.value)
+        if not cls.query.filter_by(key=key).first():
+            db.session.add(cls(key=key, value=value))

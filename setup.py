@@ -1,5 +1,4 @@
-from CTFd.utils import set_config
-from .models import db
+from .models import db, ContainerSettingsModel
 
 def setup_default_configs():
     for key, val in {
@@ -11,6 +10,6 @@ def setup_default_configs():
         "container_maxcpu": "0.5",
         "docker_assignment": "user",
     }.items():
-        set_config(f"containers:{key}", val)
+        ContainerSettingsModel.apply_default_config(key, val)
 
     db.session.commit()

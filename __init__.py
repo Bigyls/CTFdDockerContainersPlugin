@@ -5,13 +5,11 @@ It handles the registration of the container challenge type, sets up logging,
 and registers the plugin's routes and assets with the CTFd application.
 """
 
-from typing import Any
 from flask import Flask
 from flask.blueprints import Blueprint
 
 from CTFd.plugins import register_plugin_assets_directory
 from CTFd.plugins.challenges import CHALLENGE_CLASSES
-from CTFd.utils import get_config
 
 from .container_challenge import ContainerChallenge
 from .setup import setup_default_configs
@@ -37,11 +35,9 @@ def load(app: Flask) -> None:
     Returns:
         None
     """
-
     app.config['RESTX_ERROR_404_HELP'] = False
     app.db.create_all()
-    if not get_config("containers:setup"):
-        setup_default_configs()
+    setup_default_configs()
     CHALLENGE_CLASSES["container"] = ContainerChallenge
     register_plugin_assets_directory(app, base_path="/plugins/containers/assets/")
 
