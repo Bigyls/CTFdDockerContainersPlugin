@@ -118,7 +118,7 @@ def renew_container(container_manager, challenge_id, user_id, team_id, docker_as
         challenge_id (int): The ID of the associated challenge to be renewed.
         user_id (int): The ID of the user who owns the container.
         team_id (int): The ID of the team that owns the container.
-        docker_assignment (str): The assignment mode for Docker containers (e.g., 'user' or 'team').
+        docker_assignment (str): The assignment mode for Docker containers (e.g., 'user', 'team', 'unlimited').
 
     Returns:
         tuple: A dictionary with a success message and new expiration time or an error message and HTTP status code.

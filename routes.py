@@ -7,7 +7,7 @@ like updating settings and viewing the container dashboard.
 
 import datetime
 
-from flask import Blueprint, request, Flask, render_template, url_for, redirect, flash, current_app
+from flask import Blueprint, request, Flask, render_template, url_for, redirect, current_app
 
 from CTFd.models import db
 from CTFd.utils.decorators import authed_only, admins_only, during_ctf_time_only, ratelimit, require_verified_emails
@@ -27,7 +27,7 @@ containers_bp = Blueprint(
 def settings_to_dict(settings):
     """
     Convert settings objects to a dictionary.
-    
+
     Args:
         settings (list): A list of settings model objects.
 
@@ -48,11 +48,10 @@ def register_app(app: Flask):
     """
     container_settings = settings_to_dict(ContainerSettingsModel.query.all())
     log("containers_debug", format="Registering containers blueprint with settings: {settings}",
-        settings=container_settings)
+            settings=container_settings)
 
     # Initialize a global container manager using the app context and settings
-    global container_manager
-    container_manager = ContainerManager(container_settings, app)
+    app.container_manager = ContainerManager(container_settings, app)
     return containers_bp
 
 def format_time_filter(timestamp):
@@ -101,7 +100,7 @@ def route_running_container():
                 challenge_id=request.json.get("chal_id"))
             return {"error": "An error occurred."}, 500
 
-        docker_assignment = container_manager.settings.get("docker_assignment")
+        docker_assignment = current_app.container_manager.settings.get("docker_assignment")
         log("containers_debug", format="CHALL_ID:{challenge_id}|Docker assignment mode: {mode}",
             challenge_id=challenge.id,
             mode=docker_assignment)
@@ -149,12 +148,12 @@ def route_request_container():
         return {"error": "Invalid request"}, 400
 
     try:
-        docker_assignment = container_manager.settings.get("docker_assignment")
+        docker_assignment = current_app.container_manager.settings.get("docker_assignment")
         log("containers_debug", format="CHALL_ID:{challenge_id}|Docker assignment mode: {mode}",
             challenge_id=request.json.get("chal_id"),
             mode=docker_assignment)
 
-        return create_container(container_manager, request.json.get("chal_id"), user.id, user.team_id, docker_assignment)
+        return create_container(current_app.container_manager, request.json.get("chal_id"), user.id, user.team_id, docker_assignment)
     except Exception as err:
         log("containers_errors", format="CHALL_ID:{challenge_id}|Error during container creation ({error})",
             challenge_id=request.json.get("chal_id"),
@@ -178,12 +177,12 @@ def route_renew_container():
         return {"error": "Invalid request"}, 400
 
     try:
-        docker_assignment = container_manager.settings.get("docker_assignment")
+        docker_assignment = current_app.container_manager.settings.get("docker_assignment")
         log("containers_debug", format="CHALL_ID:{challenge_id}|Docker assignment mode: {mode}",
             challenge_id=request.json.get("chal_id"),
             mode=docker_assignment)
 
-        return renew_container(container_manager, request.json.get("chal_id"), user.id, user.team_id, docker_assignment)
+        return renew_container(current_app.container_manager, request.json.get("chal_id"), user.id, user.team_id, docker_assignment)
     except Exception as err:
         log("containers_errors", format="CHALL_ID:{challenge_id}|Error during container renewal ({error})",
             challenge_id=request.json.get("chal_id"),
@@ -206,7 +205,7 @@ def route_restart_container():
         log("containers_errors", format="Invalid request to /api/reset")
         return {"error": "Invalid request"}, 400
 
-    docker_assignment = container_manager.settings.get("docker_assignment")
+    docker_assignment = current_app.container_manager.settings.get("docker_assignment")
     log("containers_debug", format="CHALL_ID:{challenge_id}|Docker assignment mode: {mode}",
         challenge_id=request.json.get("chal_id"),
         mode=docker_assignment)
@@ -223,11 +222,11 @@ def route_restart_container():
         log("containers_actions", format="CHALL_ID:{challenge_id}|Resetting container '{container_id}'",
             challenge_id=request.json.get("chal_id"),
             container_id=running_container.container_id)
-        kill_container(container_manager, running_container.container_id, request.json.get("chal_id"))
+        kill_container(current_app.container_manager, running_container.container_id, request.json.get("chal_id"))
 
     log("containers_actions", format="CHALL_ID:{challenge_id}|Recreating container",
         challenge_id=request.json.get("chal_id"))
-    return create_container(container_manager, request.json.get("chal_id"), user.id, user.team_id, docker_assignment)
+    return create_container(current_app.container_manager, request.json.get("chal_id"), user.id, user.team_id, docker_assignment)
 
 @containers_bp.route('/api/stop', methods=['POST'])
 @authed_only
@@ -245,7 +244,7 @@ def route_stop_container():
         log("containers_errors", format="Invalid request to /api/stop")
         return {"error": "Invalid request"}, 400
 
-    docker_assignment = container_manager.settings.get("docker_assignment")
+    docker_assignment = current_app.container_manager.settings.get("docker_assignment")
     log("containers_debug", format="CHALL_ID:{challenge_id}|Docker assignment mode: {mode}",
         challenge_id=request.json.get("chal_id"),
         mode=docker_assignment)
@@ -262,7 +261,7 @@ def route_stop_container():
         log("containers_actions", format="CHALL_ID:{challenge_id}|Stopping container '{container_id}'",
             challenge_id=request.json.get("chal_id"),
             container_id=running_container.container_id)
-        return kill_container(container_manager, running_container.container_id, request.json.get("chal_id"))
+        return kill_container(current_app.container_manager, running_container.container_id, request.json.get("chal_id"))
 
     log("containers_errors", format="CHALL_ID:{challenge_id}|No running container found to stop",
         challenge_id=request.json.get("chal_id"))
@@ -282,7 +281,7 @@ def route_kill_container():
     # Extract the container ID and perform the kill operation
     container_id = request.json.get("container_id")
     log("containers_actions", format="Admin killing container '{container_id}'", container_id=container_id)
-    return kill_container(container_manager, container_id, "N/A")
+    return kill_container(current_app.container_manager, container_id, "N/A")
 
 @containers_bp.route('/api/purge', methods=['POST'])
 @admins_only
@@ -304,7 +303,7 @@ def route_purge_containers():
             log("containers_actions", format="Admin killing container '{container_id}'",
                 container_id=container.container_id)
             # Attempt to kill the container using its ID
-            kill_container(container_manager, container.container_id, "N/A")
+            kill_container(current_app.container_manager, container.container_id, "N/A")
         except Exception as err:
             # Log any errors encountered while killing individual containers
             log("containers_errors", format="Error during purging container '{container_id}' ({error})",
@@ -328,7 +327,7 @@ def route_get_images():
 
     try:
         # Attempt to retrieve the list of available Docker images
-        images = container_manager.get_images()
+        images = current_app.container_manager.get_images()
         # Log the number of images successfully retrieved
         log("containers_actions", format="Admin successfully retrieved {count} Docker images",
                 count=len(images))
@@ -346,7 +345,7 @@ def route_get_images():
 def route_update_settings():
     """
     Admin route to update container settings.
-    
+
     This route allows administrators to modify container-related configurations such as Docker base URL,
     hostname, expiration time, memory, and CPU settings. These settings are used by the container manager
     to handle container creation and management.
@@ -413,9 +412,10 @@ def route_update_settings():
         # Reload settings into the container manager to apply changes immediately
         all_settings = ContainerSettingsModel.query.all()
         new_settings = settings_to_dict(all_settings)
-        container_manager.settings = new_settings
+        with current_app.app_context():
+                    current_app.container_manager.settings.update(new_settings)
         log("containers_actions", format="Admin completed settings update. New settings: {settings}",
-            settings=container_manager.settings)
+                settings=current_app.container_manager.settings)
     except Exception as err:
         # Log any error that occurs while updating the container manager settings
         log("containers_errors", format="Admin encountered error while updating container_manager settings ({error})",
@@ -447,7 +447,7 @@ def route_containers_dashboard():
         # Check if the Docker daemon is connected
         connected = False
         try:
-            connected = container_manager.is_connected()
+            connected = current_app.container_manager.is_connected()
             log("containers_debug", format="Admin checked Docker daemon connection: {status}",
                 user_id=admin_user.id, status="Connected" if connected else "Disconnected")
         except Exception as err:
@@ -458,7 +458,7 @@ def route_containers_dashboard():
         # Check the running status of each container and update the corresponding field
         for i, container in enumerate(running_containers):
             try:
-                running_containers[i].is_running = container_manager.is_container_running(
+                running_containers[i].is_running = current_app.container_manager.is_container_running(
                     container.container_id)
                 log("containers_debug", format="Admin checked container '{container_id}' status: {status}",
                     user_id=admin_user.id, container_id=container.container_id,
@@ -470,7 +470,7 @@ def route_containers_dashboard():
                 running_containers[i].is_running = False
 
         # Retrieve the current Docker assignment mode from settings
-        docker_assignment = container_manager.settings.get("docker_assignment")
+        docker_assignment = current_app.container_manager.settings.get("docker_assignment")
         log("containers_debug", format="Admin retrieved Docker assignment mode: {mode}",
             user_id=admin_user.id, mode=docker_assignment)
 
@@ -502,8 +502,7 @@ def route_containers_settings():
     # Retrieve the list of running containers and current settings from the database
     running_containers = ContainerInfoModel.query.order_by(
         ContainerInfoModel.timestamp.desc()).all()
-    settings = settings_to_dict(ContainerSettingsModel.query.all())
     log("containers_actions", format="Admin Container settings called")
 
     # Render the settings template with the retrieved settings and containers
-    return render_template('container_settings.html', settings=settings)
+    return render_template('container_settings.html', settings=current_app.container_manager.settings)
