@@ -121,7 +121,7 @@ There is 3 levels of logging:
 - ERROR : What more can I say
 
 ## Roadmap
-
+- [ ] Write tests.
 - [ ] Possibility to use 2 docker TCP connection method (like 1 windows and 1 linux).
 - [x] Add exhaustive logging.
 - [x] Add docker restrictions (one docker per team, one docker per user, unlimited).
