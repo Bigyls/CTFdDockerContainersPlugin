@@ -126,9 +126,10 @@ If the CTF is a physical event, be careful about limits at API endpoints. Feel f
 
 ## Roadmap
 - [ ] Write tests.
+- [ ] Not only restriction to 1 docker per team/user, change settings to input how many (max) container per team/user.  
 - [ ] Possibility to use 2 docker TCP connection method (like 1 windows and 1 linux).
 - [x] Add exhaustive logging.
-- [x] Add docker restrictions (one docker per team, one docker per user, unlimited).
+- [x] Add docker restrictions (1 docker per team, 1 docker per user, unlimited).
 - [x] Make it work with User and Team mode.
 - [x] Tests with 3.7 CTFd.
 
